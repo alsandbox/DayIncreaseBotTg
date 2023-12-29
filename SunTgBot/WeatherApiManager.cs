@@ -4,7 +4,7 @@ namespace SunTgBot
 {
     internal class WeatherApiManager
     {
-        private string ApiUrl = Environment.GetEnvironmentVariable("API_URL");
+        private string ApiUrl = "https://api.sunrise-sunset.org/json";
 
         public async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
         {
