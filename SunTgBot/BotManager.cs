@@ -14,9 +14,8 @@ namespace SunTgBot
     {
         private readonly TelegramBotClient botClient;
         private readonly long chatId;
-        private DateTime nextMidnight;
         private readonly string botToken;
-        private Timer timer;
+
         public BotManager(string botToken, long chatId)
         {
             this.botClient = new TelegramBotClient(botToken);
@@ -32,15 +31,14 @@ namespace SunTgBot
 
             TimeSpan initialDelay = GetTimeUntil(targetTime);
 
-            var timer = new Timer(async state => await Program.HandleGetTodaysInfo(chatId, botToken), null, initialDelay, TimeSpan.FromDays(1));
-
-            await ListenForMessagesAsync();
-
-            timer.Change(Timeout.Infinite, Timeout.Infinite);
-            timer.Dispose();
+            using (var timer = new Timer(async state => await Program.HandleGetTodaysInfo(chatId, botToken), null, initialDelay, TimeSpan.FromDays(1)))
+            {
+                ListenForMessagesAsync().Wait();
+            }
 
             Console.WriteLine("Bot is stopping...");
         }
+
 
         private TimeSpan GetTimeUntil(DateTime targetTime)
         {
@@ -71,6 +69,7 @@ namespace SunTgBot
                 receiverOptions: receiverOptions,
                 cancellationToken: cts.Token
             );
+            await Task.Delay(Timeout.Infinite);
         }
 
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
