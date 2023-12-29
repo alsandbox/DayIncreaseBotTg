@@ -8,8 +8,8 @@ namespace SunTgBot
     {
         static async Task Main()
         {
-            string botToken = "6580886307:AAEJZmE49_uDy4tgw1qGBuPilJB-K-Fz3N4";
-            long chatId = -1002142278404;
+            string botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+            long chatId = Environment.GetEnvironmentVariable("CHAT_ID"); ;
             var botManager = new BotManager(botToken, chatId);
 
             botManager.StartBot();
