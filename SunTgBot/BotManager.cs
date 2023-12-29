@@ -36,10 +36,6 @@ namespace SunTgBot
 
             await ListenForMessagesAsync();
 
-            Console.WriteLine("Press any key to exit.");
-
-            Console.ReadKey();
-
             timer.Change(Timeout.Infinite, Timeout.Infinite);
             timer.Dispose();
 

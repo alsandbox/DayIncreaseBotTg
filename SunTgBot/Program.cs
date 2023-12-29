@@ -21,7 +21,6 @@ namespace SunTgBot
 
             TelegramBotClient botClient = new TelegramBotClient(botToken);
 
-
             DateTime date = DateTime.Now.Date.ToLocalTime();
             float latitude = 51.759050f;
             float longitude = 19.458600f;
@@ -36,11 +35,6 @@ namespace SunTgBot
                 string sunriseTimeString = weatherData.SunriseTime.ToString();
                 string sunsetTimeString = weatherData.SunsetTime.ToString();
                 string dayLengthString = weatherData.DayLength.ToString();
-
-                Console.WriteLine($"Sunrise time: {sunriseTimeString}");
-                Console.WriteLine($"Sunset time: {sunsetTimeString}");
-                Console.WriteLine($"The day length: {dayLengthString}");
-
                 await botClient.SendTextMessageAsync(chatId, $"Sunrise time: {sunriseTimeString}" +
                     $"\nSunset time: {sunsetTimeString}" +
                     $"\nThe day length: {dayLengthString}");
