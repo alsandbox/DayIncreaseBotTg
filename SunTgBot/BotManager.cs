@@ -26,17 +26,13 @@ namespace SunTgBot
         public async Task StartBot()
         {
             Console.WriteLine("Bot is starting...");
-
             DateTime targetTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 12, 00, 0);
 
             TimeSpan initialDelay = GetTimeUntil(targetTime);
 
-            using (var timer = new Timer(async state => await Program.HandleGetTodaysInfo(chatId, botToken), null, initialDelay, TimeSpan.FromDays(1)))
-            {
-                ListenForMessagesAsync().Wait();
-            }
+            var timer = new Timer(async state => await Program.HandleGetTodaysInfo(chatId, botToken), null, initialDelay, TimeSpan.FromDays(1));
 
-            Console.WriteLine("Bot is stopping...");
+            await ListenForMessagesAsync();
         }
 
 
