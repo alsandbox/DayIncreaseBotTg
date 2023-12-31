@@ -27,11 +27,8 @@ namespace SunTgBot
         {
             Console.WriteLine("Bot is starting...");
 
-            while (true)
-            {
-                await ListenForMessagesAsync();
-                await Task.Delay(TimeSpan.FromMinutes(1));
-            }
+            await ListenForMessagesAsync();
+            await Task.Delay(TimeSpan.FromMinutes(1));
         }
 
         public async Task ListenForMessagesAsync()
