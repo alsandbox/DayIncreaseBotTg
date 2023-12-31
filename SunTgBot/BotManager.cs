@@ -10,28 +10,43 @@ using Telegram.Bot.Types.Enums;
 
 namespace SunTgBot
 {
-    class BotManager
+    class BotManager(string botToken, long chatId)
     {
-        private readonly TelegramBotClient botClient;
-        private readonly long chatId;
-        private readonly string botToken;
-
-        public BotManager(string botToken, long chatId)
-        {
-            this.botClient = new TelegramBotClient(botToken);
-            this.chatId = chatId;
-            this.botToken = botToken;
-        }
+        private readonly TelegramBotClient botClient = new TelegramBotClient(botToken);
+        private readonly long chatId = chatId;
+        private readonly string botToken = botToken;
 
         public async Task StartBot()
         {
             Console.WriteLine("Bot is starting...");
 
+            DateTime targetTime = new (DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 12, 00, 0, DateTimeKind.Utc);
+
+            TimeSpan initialDelay = GetTimeUntil(targetTime);
+
+            var timer = new Timer(async state => await Program.HandleGetTodaysInfo(chatId, botToken), null, initialDelay, TimeSpan.FromDays(1));
+
             await ListenForMessagesAsync();
-            await Task.Delay(TimeSpan.FromMinutes(1));
+
+            Console.WriteLine("Bot is stopping...");
         }
 
-        public async Task ListenForMessagesAsync()
+        private TimeSpan GetTimeUntil(DateTime targetTime)
+        {
+            DateTime now = DateTime.Now;
+            DateTime nextExecution = new (now.Year, now.Month, now.Day, targetTime.Hour, targetTime.Minute, targetTime.Second, DateTimeKind.Utc);
+
+            if (now > nextExecution)
+            {
+                nextExecution = nextExecution.AddDays(1);
+            }
+
+            TimeSpan timeUntilNextExecution = nextExecution - now;
+            return timeUntilNextExecution;
+        }
+
+
+        private async Task ListenForMessagesAsync()
         {
             using var cts = new CancellationTokenSource();
 
@@ -39,13 +54,18 @@ namespace SunTgBot
             {
                 AllowedUpdates = Array.Empty<UpdateType>()
             };
-            botClient.StartReceiving(
-                updateHandler: HandleUpdateAsync,
-                pollingErrorHandler: HandlePollingErrorAsync,
-                receiverOptions: receiverOptions,
-                cancellationToken: cts.Token
-            );
-            await Task.Delay(TimeSpan.FromMinutes(1));
+
+            while (!cts.Token.IsCancellationRequested)
+            {
+                botClient.StartReceiving(
+                    updateHandler: HandleUpdateAsync,
+                    pollingErrorHandler: HandlePollingErrorAsync,
+                    receiverOptions: receiverOptions,
+                    cancellationToken: cts.Token
+                );
+
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
         }
 
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -55,7 +75,7 @@ namespace SunTgBot
                 return;
             }
 
-            if (message?.Text != null && message.Text.StartsWith("/gettodaysinfo"))
+            if (message.Text != null && message.Text.StartsWith("/gettodaysinfo"))
             {
                 await Program.HandleGetTodaysInfo(chatId, botToken);
             }

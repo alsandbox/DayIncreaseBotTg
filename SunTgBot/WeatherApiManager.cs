@@ -1,15 +1,16 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using System.Globalization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SunTgBot
 {
     internal class WeatherApiManager
     {
-        private string ApiUrl = "https://api.sunrise-sunset.org/json";
+        private readonly string ? ApiUrl = Environment.GetEnvironmentVariable("API_URL");
 
         public async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
         {
             DateTime yesterday = date.AddDays(-1);
-            DateTime shortestDay = new DateTime(2023, 12, 22);
+            DateTime shortestDay = new (2023, 12, 22);
 
             string formattedDate = date.ToString("yyyy-MM-dd");
             string formattedYesterdayDate = yesterday.ToString("yyyy-MM-dd");
@@ -21,47 +22,45 @@ namespace SunTgBot
 
             WeatherData defaultWeatherData = new WeatherData();
 
-            using (HttpClient client = new HttpClient())
+            using HttpClient client = new();
+            try
             {
-                try
+                HttpResponseMessage responseToday = await client.GetAsync(apiUrlToday);
+                HttpResponseMessage responseYesterday = await client.GetAsync(apiUrlYesterday);
+                HttpResponseMessage responseShortestDay = await client.GetAsync(apiUrlShortestDay);
+
+                if (responseToday.IsSuccessStatusCode && responseYesterday.IsSuccessStatusCode)
                 {
-                    HttpResponseMessage responseToday = await client.GetAsync(apiUrlToday);
-                    HttpResponseMessage responseYesterday = await client.GetAsync(apiUrlYesterday);
-                    HttpResponseMessage responseShortestDay = await client.GetAsync(apiUrlShortestDay);
+                    string resultToday = await responseToday.Content.ReadAsStringAsync();
+                    string resultYesterday = await responseYesterday.Content.ReadAsStringAsync();
+                    string resultShortestDay = await responseShortestDay.Content.ReadAsStringAsync();
 
-                    if (responseToday.IsSuccessStatusCode && responseYesterday.IsSuccessStatusCode)
+                    string sunriseTime = ParseSunriseTime(resultToday);
+                    string sunsetTime = ParseSunsetTime(resultToday);
+                    string dayLength = ParseDayLength(resultToday, resultYesterday, resultShortestDay);
+
+                    var weatherInfo = new
                     {
-                        string resultToday = await responseToday.Content.ReadAsStringAsync();
-                        string resultYesterday = await responseYesterday.Content.ReadAsStringAsync();
-                        string resultShortestDay = await responseShortestDay.Content.ReadAsStringAsync();
+                        SunriseTime = sunriseTime,
+                        SunsetTime = sunsetTime,
+                        DayLength = dayLength
+                    };
 
-                        string sunriseTime = ParseSunriseTime(resultToday);
-                        string sunsetTime = ParseSunsetTime(resultToday);
-                        string dayLength = ParseDayLength(resultToday, resultYesterday, resultShortestDay);
+                    string weatherInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(weatherInfo);
 
-                        var weatherInfo = new
-                        {
-                            SunriseTime = sunriseTime,
-                            SunsetTime = sunsetTime,
-                            DayLength = dayLength
-                        };
-
-                        string weatherInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(weatherInfo);
-
-                        return weatherInfoJson;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Error: {responseToday.StatusCode}");
-                        Console.WriteLine($"Error: {responseYesterday.StatusCode}");
-                        return Newtonsoft.Json.JsonConvert.SerializeObject(defaultWeatherData);
-                    }
+                    return weatherInfoJson;
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine($"Exception: {ex.Message}");
+                    Console.WriteLine($"Error: {responseToday.StatusCode}");
+                    Console.WriteLine($"Error: {responseYesterday.StatusCode}");
                     return Newtonsoft.Json.JsonConvert.SerializeObject(defaultWeatherData);
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception: {ex.Message}");
+                return Newtonsoft.Json.JsonConvert.SerializeObject(defaultWeatherData);
             }
         }
 
@@ -73,7 +72,7 @@ namespace SunTgBot
                 var sunrise = jsonResult?.results.sunrise;
                 DateTime sunriseDateTime = DateTime.MinValue;
 
-                if (sunrise != null && DateTime.TryParse((string)sunrise, out sunriseDateTime))
+                if (sunrise != null && DateTime.TryParse((string?)sunrise, out sunriseDateTime))
                 {
                     return sunriseDateTime.ToString("HH:mm:ss");
                 }
@@ -97,7 +96,7 @@ namespace SunTgBot
                 var sunset = jsonResult?.results.sunset;
                 DateTime sunsetDateTime = DateTime.MinValue;
 
-                if (sunset != null && DateTime.TryParse((string)sunset, out sunsetDateTime))
+                if (sunset != null && DateTime.TryParse((string?)sunset, out sunsetDateTime))
                 {
                     return sunsetDateTime.ToString("HH:mm:ss");
                 }

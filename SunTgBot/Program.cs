@@ -1,6 +1,4 @@
 ﻿using Telegram.Bot;
-using Telegram.Bot.Args;
-using Telegram.Bot.Types;
 
 namespace SunTgBot
 {
@@ -8,11 +6,18 @@ namespace SunTgBot
     {
         static async Task Main()
         {
-            string botToken = "6580886307:AAEJZmE49_uDy4tgw1qGBuPilJB-K-Fz3N4";
+            string ? botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
             long chatId = -1002142278404;
-            var botManager = new BotManager(botToken, chatId);
 
-            await botManager.StartBot();
+            if (botToken != null)
+            {
+                var botManager = new BotManager(botToken, chatId);
+                await botManager.StartBot();
+            }
+            else
+            {
+                Console.WriteLine("Bot token is null. Make sure it's set in the environment.");
+            } 
         }
 
         internal static async Task HandleGetTodaysInfo(long chatId, string botToken)
@@ -30,14 +35,22 @@ namespace SunTgBot
 
             if (!string.IsNullOrEmpty(weatherDataJson))
             {
-                WeatherData ? weatherData = Newtonsoft.Json.JsonConvert.DeserializeObject<WeatherData>(weatherDataJson);
+                WeatherData? weatherData = Newtonsoft.Json.JsonConvert.DeserializeObject<WeatherData>(weatherDataJson);
 
-                string sunriseTimeString = weatherData.SunriseTime.ToString();
-                string sunsetTimeString = weatherData.SunsetTime.ToString();
-                string dayLengthString = weatherData.DayLength.ToString();
-                await botClient.SendTextMessageAsync(chatId, $"Sunrise time: {sunriseTimeString}" +
-                    $"\nSunset time: {sunsetTimeString}" +
-                    $"\nThe day length: {dayLengthString}");
+                if (weatherData != null)
+                {
+                    string sunriseTimeString = weatherData.SunriseTime?.ToString() ?? "N/A";
+                    string sunsetTimeString = weatherData.SunsetTime?.ToString() ?? "N/A";
+                    string dayLengthString = weatherData.DayLength?.ToString() ?? "N/A";
+
+                    await botClient.SendTextMessageAsync(chatId, $"Sunrise time: {sunriseTimeString}" +
+                        $"\nSunset time: {sunsetTimeString}" +
+                        $"\nThe day length: {dayLengthString}");
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(chatId, "Unable to retrieve weather data.");
+                }
             }
             else
             {
