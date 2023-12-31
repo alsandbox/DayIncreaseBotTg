@@ -26,30 +26,13 @@ namespace SunTgBot
         public async Task StartBot()
         {
             Console.WriteLine("Bot is starting...");
-            DateTime targetTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 12, 00, 0);
 
-            TimeSpan initialDelay = GetTimeUntil(targetTime);
-
-            var timer = new Timer(async state => await Program.HandleGetTodaysInfo(chatId, botToken), null, initialDelay, TimeSpan.FromDays(1));
-
-            await ListenForMessagesAsync();
-        }
-
-
-        private TimeSpan GetTimeUntil(DateTime targetTime)
-        {
-            DateTime now = DateTime.Now;
-            DateTime nextExecution = new DateTime(now.Year, now.Month, now.Day, targetTime.Hour, targetTime.Minute, targetTime.Second);
-
-            if (now > nextExecution)
+            while (true)
             {
-                nextExecution = nextExecution.AddDays(1);
+                await ListenForMessagesAsync();
+                await Task.Delay(TimeSpan.FromMinutes(1));
             }
-
-            TimeSpan timeUntilNextExecution = nextExecution - now;
-            return timeUntilNextExecution;
         }
-
 
         public async Task ListenForMessagesAsync()
         {
@@ -57,7 +40,7 @@ namespace SunTgBot
 
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = Array.Empty<UpdateType>() 
+                AllowedUpdates = Array.Empty<UpdateType>()
             };
             botClient.StartReceiving(
                 updateHandler: HandleUpdateAsync,
@@ -65,7 +48,7 @@ namespace SunTgBot
                 receiverOptions: receiverOptions,
                 cancellationToken: cts.Token
             );
-            await Task.Delay(Timeout.Infinite);
+            await Task.Delay(TimeSpan.FromMinutes(1));
         }
 
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -83,14 +66,14 @@ namespace SunTgBot
 
         private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            var ErrorMessage = exception switch
+            var errorMessage = exception switch
             {
                 ApiRequestException apiRequestException
                     => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
 
-            Console.WriteLine(ErrorMessage);
+            Console.WriteLine(errorMessage);
             return Task.CompletedTask;
         }
     }
