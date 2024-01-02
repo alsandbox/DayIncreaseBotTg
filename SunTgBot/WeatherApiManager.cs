@@ -5,7 +5,7 @@ namespace SunTgBot
 {
     internal class WeatherApiManager
     {
-        private readonly string ? ApiUrl = Environment.GetEnvironmentVariable("API_URL");
+        private readonly string ? ApiUrl = Environment.GetEnvironmentVariable("API_URL") ?? "https://api.sunrise-sunset.org/json"; //TODO: remove the default value after everything is okay
 
         public async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
         {
