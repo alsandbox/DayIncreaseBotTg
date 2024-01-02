@@ -6,18 +6,11 @@ namespace SunTgBot
     {
         static async Task Main()
         {
-            string ? botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+            string botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN") ?? "6580886307:AAEJZmE49_uDy4tgw1qGBuPilJB-K-Fz3N4"; //remove the default value after everything is okay
             long chatId = -1002142278404;
 
-            if (botToken != null)
-            {
-                var botManager = new BotManager(botToken, chatId);
-                await botManager.StartBot();
-            }
-            else
-            {
-                Console.WriteLine("Bot token is null. Make sure it's set in the environment.");
-            } 
+            var botManager = new BotManager(botToken, chatId);
+            await botManager.StartBot();
         }
 
         internal static async Task HandleGetTodaysInfo(long chatId, string botToken)
