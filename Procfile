@@ -1,1 +1,1 @@
-worker: cd /obj/Debug/net8.0 && dotnet SunTgBot.dll
+worker: cd SunTgBot/bin/Debug/net8.0 && dotnet SunTgBot.dll
