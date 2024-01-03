@@ -6,7 +6,7 @@ namespace SunTgBot
     {
         static async Task Main()
         {
-            string botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN") ?? "6580886307:AAEJZmE49_uDy4tgw1qGBuPilJB-K-Fz3N4"; //TODO: remove the default value after everything is okay
+            string botToken = "6580886307:AAEJZmE49_uDy4tgw1qGBuPilJB-K-Fz3N4"; //TODO: fix for the env variable if everything's okay
             long chatId = -1002142278404;
 
             var botManager = new BotManager(botToken, chatId);
