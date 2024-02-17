@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SunTgBot": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using System;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -20,7 +17,7 @@ namespace SunTgBot
         {
             Console.WriteLine("Bot is starting...");
 
-            DateTime targetTime = new (DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 12, 00, 0, DateTimeKind.Utc);
+            DateTime targetTime = new (DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 18, 05, 0, DateTimeKind.Utc);
 
             TimeSpan initialDelay = GetTimeUntil(targetTime);
 
@@ -45,27 +42,34 @@ namespace SunTgBot
             return timeUntilNextExecution;
         }
 
-
         private async Task ListenForMessagesAsync()
         {
-            using var cts = new CancellationTokenSource();
-
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = Array.Empty<UpdateType>()
+                AllowedUpdates = new[] { UpdateType.Message }
             };
 
-            while (!cts.Token.IsCancellationRequested)
-            {
-                botClient.StartReceiving(
-                    updateHandler: HandleUpdateAsync,
-                    pollingErrorHandler: HandlePollingErrorAsync,
-                    receiverOptions: receiverOptions,
-                    cancellationToken: cts.Token
-                );
+            botClient.StartReceiving(
+                updateHandler: HandleUpdateAsync,
+                pollingErrorHandler: HandlePollingErrorAsync,
+                receiverOptions: receiverOptions
+            );
 
-                await Task.Delay(TimeSpan.FromMinutes(1));
+            await RunBackgroundService();
+        }
+
+        private async Task RunBackgroundService()
+        {
+            DateTime endDate = new DateTime(2024, 6, 21);
+
+            while (DateTime.Now.Date <= endDate)
+            {
+                await Program.HandleGetTodaysInfo(chatId, botToken);
+
+                await Task.Delay(TimeSpan.FromDays(1));
             }
+
+            Console.WriteLine("Daily tasks completed. Stopping the background service.");
         }
 
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)

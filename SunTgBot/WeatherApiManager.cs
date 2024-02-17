@@ -1,11 +1,8 @@
-﻿using System.Globalization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace SunTgBot
+﻿namespace SunTgBot
 {
     internal class WeatherApiManager
     {
-        private readonly string ? ApiUrl = Environment.GetEnvironmentVariable("API_URL") ?? "https://api.sunrise-sunset.org/json"; //TODO: remove the default value after everything is okay
+        private readonly string ApiUrl = "https://api.sunrise-sunset.org/json";
 
         public async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
         {
@@ -35,7 +32,7 @@ namespace SunTgBot
                     string resultYesterday = await responseYesterday.Content.ReadAsStringAsync();
                     string resultShortestDay = await responseShortestDay.Content.ReadAsStringAsync();
 
-                    string sunriseTime = ParseSunriseTime(resultToday);
+                    string sunriseTime = ParseSunriseTime(resultToday);                    
                     string sunsetTime = ParseSunsetTime(resultToday);
                     string dayLength = ParseDayLength(resultToday, resultYesterday, resultShortestDay);
 
@@ -70,11 +67,15 @@ namespace SunTgBot
             {
                 var jsonResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponse);
                 var sunrise = jsonResult?.results.sunrise;
-                DateTime sunriseDateTime = DateTime.MinValue;
+                DateTimeOffset sunriseDateTimeOffset = DateTimeOffset.MinValue;
 
-                if (sunrise != null && DateTime.TryParse((string?)sunrise, out sunriseDateTime))
+                if (sunrise != null && DateTimeOffset.TryParse((string)sunrise, out sunriseDateTimeOffset))
                 {
-                    return sunriseDateTime.ToString("HH:mm:ss");
+                    TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+
+                    DateTime sunsetDateTime = TimeZoneInfo.ConvertTime(sunriseDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, desiredTimeZone);
+
+                    return sunsetDateTime.ToString("HH:mm:ss");
                 }
                 else
                 {
@@ -94,15 +95,19 @@ namespace SunTgBot
             {
                 var jsonResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponse);
                 var sunset = jsonResult?.results.sunset;
-                DateTime sunsetDateTime = DateTime.MinValue;
+                DateTimeOffset sunsetDateTimeOffset = DateTimeOffset.MinValue;
 
-                if (sunset != null && DateTime.TryParse((string?)sunset, out sunsetDateTime))
+                if (sunset != null && DateTimeOffset.TryParse((string)sunset, out  sunsetDateTimeOffset))
                 {
+                    TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+
+                    DateTime sunsetDateTime = TimeZoneInfo.ConvertTime(sunsetDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, desiredTimeZone);
+
                     return sunsetDateTime.ToString("HH:mm:ss");
                 }
                 else
                 {
-                    return "Error parsing sunrise date and time";
+                    return "Error parsing sunset date and time";
                 }
             }
             catch (Exception ex)
@@ -144,8 +149,6 @@ namespace SunTgBot
                     int hoursFromShortestDay = shortestDayLengthDifferenceTimeSpan.Hours;
                     int minutesFromShortestDay = shortestDayLengthDifferenceTimeSpan.Minutes;
                     int secondsFromShortestDay = shortestDayLengthDifferenceTimeSpan.Seconds;
-
-
 
                     string formattedDayLength = $"{hoursToday:D2}:{minutesToday:D2}:{secondsToday:D2}" +
                         $"\nThe difference between yesterday and today: {hoursYesterday:D2}:{minutesYesterday:D2}:{secondsYesterday:D2}" +
