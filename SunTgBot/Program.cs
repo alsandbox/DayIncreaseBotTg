@@ -4,14 +4,40 @@ namespace SunTgBot
 {
     internal static class Program
     {
-        static async Task Main()
+        static async Task Main(string[] args)
         {
-            string ? botToken = Environment.GetEnvironmentVariable("TG_BOT_TOKEN") ?? "6580886307:AAH5p2YJUkf3v8CWtODopMTz3oZ67zDAkcY";
-            //long chatId = -1002142278404;
-            long chatId = -4116058188;
+            Console.WriteLine("Reading bot token...");
+            string botToken = GetTokenFromArgsOrEnv(args, "BOT_TOKEN");
+            Console.WriteLine($"Bot token: {botToken}");
+
+            Console.WriteLine("Reading chat ID...");
+            long chatId = GetChatIdFromArgsOrEnv(args, "CHAT_ID");
+            Console.WriteLine($"Chat ID: {chatId}");
 
             var botManager = new BotManager(botToken, chatId);
             await botManager.StartBot();
+        }
+
+        static string GetTokenFromArgsOrEnv(string[] args, string envVarName)
+        {
+            string? token = args.Length > 0 ? args[0] : Environment.GetEnvironmentVariable(envVarName);
+            Console.WriteLine($"Token from args or env: {token}");
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new ArgumentException($"The bot token must be provided via command-line arguments or the {envVarName} environment variable.");
+            }
+            return token;
+        }
+
+        static long GetChatIdFromArgsOrEnv(string[] args, string envVarName)
+        {
+            string? input = args.Length > 1 ? args[1] : Environment.GetEnvironmentVariable(envVarName);
+            Console.WriteLine($"Chat ID input from args or env: {input}");
+            if (string.IsNullOrEmpty(input) || !long.TryParse(input, out long chatId))
+            {
+                throw new ArgumentException($"The chat ID must be provided via command-line arguments or the {envVarName} environment variable and must be a valid long integer.");
+            }
+            return chatId;
         }
 
         internal static async Task HandleGetTodaysInfo(long chatId, string botToken)

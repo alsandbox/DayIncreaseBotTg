@@ -1,48 +1,62 @@
-﻿using Telegram.Bot;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-
 namespace SunTgBot
 {
-    class BotManager(string botToken, long chatId)
+    class BotManager
     {
-        private readonly TelegramBotClient botClient = new TelegramBotClient(botToken);
-        private readonly long chatId = chatId;
-        private readonly string botToken = botToken;
+        private readonly TelegramBotClient botClient;
+        private readonly long chatId;
+        private readonly string botToken;
+        private CancellationTokenSource cts;
+
+        public BotManager(string botToken, long chatId)
+        {
+            this.botToken = botToken;
+            this.chatId = chatId;
+            this.botClient = new TelegramBotClient(botToken);
+            cts = new CancellationTokenSource();
+        }
 
         public async Task StartBot()
         {
             Console.WriteLine("Bot is starting...");
 
-            DateTime targetTime = new (DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 18, 05, 0, DateTimeKind.Utc);
+            DateTime targetTime = DateTimeOffset.UtcNow.Date.AddHours(16);
 
             TimeSpan initialDelay = GetTimeUntil(targetTime);
 
-            var timer = new Timer(async state => await Program.HandleGetTodaysInfo(chatId, botToken), null, initialDelay, TimeSpan.FromDays(1));
+            var timer = new Timer(async state => await SendDailyMessage(), null, initialDelay, TimeSpan.FromDays(1));
 
-            await ListenForMessagesAsync();
+            await ListenForMessagesAsync(cts.Token);
 
             Console.WriteLine("Bot is stopping...");
         }
 
         private TimeSpan GetTimeUntil(DateTime targetTime)
         {
-            DateTime now = DateTime.Now;
-            DateTime nextExecution = new (now.Year, now.Month, now.Day, targetTime.Hour, targetTime.Minute, targetTime.Second, DateTimeKind.Utc);
-
-            if (now > nextExecution)
+            DateTime now = DateTime.UtcNow;
+            if (now > targetTime)
             {
-                nextExecution = nextExecution.AddDays(1);
+                targetTime = targetTime.AddDays(1);
             }
 
-            TimeSpan timeUntilNextExecution = nextExecution - now;
+            TimeSpan timeUntilNextExecution = targetTime - now;
             return timeUntilNextExecution;
         }
 
-        private async Task ListenForMessagesAsync()
+        private async Task SendDailyMessage()
+        {
+            await Program.HandleGetTodaysInfo(chatId, botToken);
+        }
+
+        private async Task ListenForMessagesAsync(CancellationToken cancellationToken)
         {
             var receiverOptions = new ReceiverOptions
             {
@@ -52,24 +66,18 @@ namespace SunTgBot
             botClient.StartReceiving(
                 updateHandler: HandleUpdateAsync,
                 pollingErrorHandler: HandlePollingErrorAsync,
-                receiverOptions: receiverOptions
+                receiverOptions: receiverOptions,
+                cancellationToken: cancellationToken
             );
 
-            await RunBackgroundService();
-        }
-
-        private async Task RunBackgroundService()
-        {
-            DateTime endDate = new DateTime(2024, 6, 21);
-
-            while (DateTime.Now.Date <= endDate)
+            try
             {
-                await Program.HandleGetTodaysInfo(chatId, botToken);
-
-                await Task.Delay(TimeSpan.FromDays(1));
+                await Task.Delay(Timeout.Infinite, cancellationToken);
             }
-
-            Console.WriteLine("Daily tasks completed. Stopping the background service.");
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("Bot receiving has been cancelled.");
+            }
         }
 
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)

@@ -12,4 +12,5 @@ RUN dotnet publish -c Release -o out
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /SunTgBot
 COPY --from=build-env /SunTgBot/SunTgBot/bin/Release/net8.0/publish .
+
 ENTRYPOINT ["dotnet", "SunTgBot.dll"]
