@@ -1,13 +1,22 @@
-﻿namespace SunTgBot
+﻿using Microsoft.Extensions.Configuration;
+using System.Globalization;
+
+namespace SunTgBot
 {
     internal class WeatherApiManager
     {
-        private readonly string ApiUrl = "https://api.sunrise-sunset.org/json";
+        private readonly string ApiUrl;
 
-        public async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
+        public WeatherApiManager(IConfiguration configuration)
         {
-            DateTime yesterday = date.AddDays(-1);
-            DateTime shortestDay = new (2023, 12, 22);
+            ApiUrl = configuration["ApiSettings:SunriseSunsetApiUrl"]
+                     ?? throw new ArgumentNullException(nameof(configuration), "API URL not configured");
+        }
+
+        internal async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
+        {
+            DateTime yesterday = date.AddDays(-1).ToUniversalTime();
+            DateTime shortestDay = new DateTime(2023, 12, 22, 0, 0, 0, DateTimeKind.Utc);
 
             string formattedDate = date.ToString("yyyy-MM-dd");
             string formattedYesterdayDate = yesterday.ToString("yyyy-MM-dd");
