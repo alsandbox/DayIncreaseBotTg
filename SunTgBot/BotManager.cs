@@ -56,7 +56,25 @@ namespace SunTgBot
 
         private async Task SendDailyMessage()
         {
-            await Program.HandleGetTodaysInfo(chatId, botToken, weatherApiManager);
+            DateTime currentDate = DateTime.Now;
+            DateTime winterSolstice = new DateTime(currentDate.Year, 12, 21);
+            DateTime summerSolstice = new DateTime(currentDate.Year, 6, 21);
+
+            if (currentDate == summerSolstice)
+            {
+                summerSolstice = new DateTime(currentDate.Year + 1, 6, 21);
+                await Console.Out.WriteLineAsync("It's the summer solstice.");
+            }
+            else if (currentDate == winterSolstice)
+            {
+                winterSolstice = new DateTime(currentDate.Year + 1, 12, 21);
+                await Console.Out.WriteLineAsync("It's the winter solstice.");
+            }
+            
+            if (currentDate >= winterSolstice && currentDate <= summerSolstice)
+            {
+                await Program.HandleGetTodaysInfo(chatId, botToken, weatherApiManager);
+            }        
         }
 
         private async Task ListenForMessagesAsync(CancellationToken cancellationToken)
