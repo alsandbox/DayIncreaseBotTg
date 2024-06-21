@@ -74,7 +74,11 @@ namespace SunTgBot
             if (currentDate >= winterSolstice && currentDate <= summerSolstice)
             {
                 await Program.HandleGetTodaysInfo(chatId, botToken, weatherApiManager);
-            }        
+            }
+            else
+            {
+                await Console.Out.WriteLineAsync("Wait till the next solstice.");
+            }
         }
 
         private async Task ListenForMessagesAsync(CancellationToken cancellationToken)
