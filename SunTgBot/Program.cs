@@ -11,11 +11,7 @@ namespace SunTgBot
             Console.WriteLine("Reading bot token...");
             string botToken = GetTokenFromArgsOrEnv(args, "BOT_TOKEN");
 
-            Console.WriteLine("Reading chat ID...");
-            long chatId = GetChatIdFromArgsOrEnv(args, "CHAT_ID");
-
-
-            var botManager = ConfigureBotManager(botToken, chatId);
+            var botManager = ConfigureBotManager(botToken);
 
             if (botManager != null)
             {
@@ -27,7 +23,7 @@ namespace SunTgBot
             }
         }
 
-        static BotManager? ConfigureBotManager(string botToken, long chatId)
+        static BotManager? ConfigureBotManager(string botToken)
         {
             try
             {
@@ -42,19 +38,13 @@ namespace SunTgBot
                     return null;
                 }
 
-                if (chatId == 0)
-                {
-                    Console.WriteLine("Chat ID is not provided or configured properly.");
-                    return null;
-                }
-
                 if (weatherApiManager == null)
                 {
                     Console.WriteLine("WeatherApiManager is not configured properly.");
                     return null;
                 }
 
-                return new BotManager(botToken, chatId, weatherApiManager);
+                return new BotManager(botToken, weatherApiManager);
             }
             catch (Exception ex)
             {
@@ -62,7 +52,6 @@ namespace SunTgBot
                 return null;
             }
         }
-
 
         static string GetTokenFromArgsOrEnv(string[] args, string envVarName)
         {
@@ -75,15 +64,6 @@ namespace SunTgBot
             return token;
         }
 
-        static long GetChatIdFromArgsOrEnv(string[] args, string envVarName)
-        {
-            string? input = args.Length > 1 ? args[1] : Environment.GetEnvironmentVariable(envVarName);
-            if (string.IsNullOrEmpty(input) || !long.TryParse(input, out long chatId))
-            {
-                throw new ArgumentException($"The chat ID must be provided via command-line arguments or the {envVarName} environment variable and must be a valid long integer.");
-            }
-            return chatId;
-        }
 
         private static ServiceProvider ConfigureServices()
         {

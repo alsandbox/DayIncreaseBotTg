@@ -13,16 +13,15 @@ namespace SunTgBot
     {
         private System.Threading.Timer? timer;
         private readonly TelegramBotClient botClient;
-        private readonly long chatId;
+        private long chatId;
         private readonly string botToken;
         private readonly WeatherApiManager weatherApiManager;
         private readonly CancellationTokenSource cts;
         private bool disposed;
 
-        public BotManager(string botToken, long chatId, WeatherApiManager weatherApiManager)
+        public BotManager(string botToken, WeatherApiManager weatherApiManager)
         {
             this.botToken = botToken;
-            this.chatId = chatId;
             this.weatherApiManager = weatherApiManager;
             this.botClient = new TelegramBotClient(botToken);
             cts = new CancellationTokenSource();
@@ -111,6 +110,8 @@ namespace SunTgBot
             {
                 return;
             }
+
+            chatId = message.Chat.Id;
 
             if (message.Text != null && message.Text.StartsWith("/gettodaysinfo"))
             {
