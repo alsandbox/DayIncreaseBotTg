@@ -75,9 +75,11 @@ namespace SunTgBot
             {
                 var jsonResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponse);
                 var sunrise = jsonResult?.results.sunrise;
-                DateTimeOffset sunriseDateTimeOffset = DateTimeOffset.MinValue;
 
-                if (sunrise != null && DateTimeOffset.TryParse((string)sunrise, out sunriseDateTimeOffset))
+                if (sunrise is not null && DateTimeOffset.TryParse((string)sunrise,
+                                            System.Globalization.CultureInfo.InvariantCulture,
+                                            System.Globalization.DateTimeStyles.None,
+                                            out DateTimeOffset sunriseDateTimeOffset))
                 {
                     TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
 
@@ -103,9 +105,11 @@ namespace SunTgBot
             {
                 var jsonResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponse);
                 var sunset = jsonResult?.results.sunset;
-                DateTimeOffset sunsetDateTimeOffset = DateTimeOffset.MinValue;
 
-                if (sunset != null && DateTimeOffset.TryParse((string)sunset, out  sunsetDateTimeOffset))
+                if (sunset is not null && DateTimeOffset.TryParse((string)sunset,
+                                            System.Globalization.CultureInfo.InvariantCulture,
+                                            System.Globalization.DateTimeStyles.None,
+                                            out DateTimeOffset sunsetDateTimeOffset))
                 {
                     TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
 
