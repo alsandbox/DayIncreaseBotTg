@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Configuration;
-using System.Globalization;
 
 namespace SunTgBot
 {
@@ -70,7 +69,7 @@ namespace SunTgBot
             }
         }
 
-        private string ParseSunriseTime(string apiResponse)
+        private static string ParseSunriseTime(string apiResponse)
         {
             try
             {
@@ -98,7 +97,7 @@ namespace SunTgBot
             }
         }
 
-        private string ParseSunsetTime(string apiResponse)
+        private static string ParseSunsetTime(string apiResponse)
         {
             try
             {
@@ -126,7 +125,7 @@ namespace SunTgBot
             }
         }
 
-        private string ParseDayLength(string apiResponseToday, string apiResponseYesterday, string apiResponseShortestDay)
+        private static string ParseDayLength(string apiResponseToday, string apiResponseYesterday, string apiResponseShortestDay)
         {
             try
             {
