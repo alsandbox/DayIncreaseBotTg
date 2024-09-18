@@ -1,135 +1,39 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Telegram.Bot;
-using Telegram.Bot.Exceptions;
-using Telegram.Bot.Polling;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
-
+﻿using Telegram.Bot;
 namespace SunTgBot
 {
     internal class BotManager : IDisposable
     {
         private System.Threading.Timer? timer;
-        private readonly TelegramBotClient botClient;
-        private long chatId;
-        private readonly string botToken;
-        private readonly WeatherApiManager weatherApiManager;
         private readonly CancellationTokenSource cts;
         private bool disposed;
+        private readonly MessageHandler messageHandler;
+
 
         public BotManager(string botToken, WeatherApiManager weatherApiManager)
         {
-            this.botToken = botToken;
-            this.weatherApiManager = weatherApiManager;
-            this.botClient = new TelegramBotClient(botToken);
+            TelegramBotClient botClient = new TelegramBotClient(botToken);
             cts = new CancellationTokenSource();
+            messageHandler = new MessageHandler(botToken, weatherApiManager, botClient);
         }
 
-        public async Task StartBot()
+        public async Task StartBotAsync()
         {
             Console.WriteLine("Bot is starting...");
 
-            DateTime targetTime = DateTime.UtcNow.Date.AddHours(13).AddMinutes(00);
-            TimeSpan initialDelay = GetTimeUntil(targetTime);
-
-            timer = new Timer(async state => await SendDailyMessage(), null, initialDelay, TimeSpan.FromDays(1));
-
-            await ListenForMessagesAsync(cts.Token);
+            TimeSpan initialDelay = GetInitialDelay(13, 0);
+            timer = new Timer(async state => await messageHandler.SendDailyMessageAsync(), null, initialDelay, TimeSpan.FromDays(1));
+            await messageHandler.ListenForMessagesAsync(cts.Token);
 
             Console.WriteLine("Bot is stopping...");
         }
 
-        private TimeSpan GetTimeUntil(DateTime targetTime)
+        private static TimeSpan GetInitialDelay(int targetHour, int targetMinute)
         {
-            DateTime now = DateTime.UtcNow;
-            if (now > targetTime)
-            {
+            DateTime targetTime = DateTime.UtcNow.Date.AddHours(targetHour).AddMinutes(targetMinute);
+            if (DateTime.UtcNow > targetTime)
                 targetTime = targetTime.AddDays(1);
-            }
 
-            TimeSpan timeUntilNextExecution = targetTime - now;
-            return timeUntilNextExecution;
-        }
-
-        private async Task SendDailyMessage()
-        {
-            DateTime currentDate = DateTime.Now;
-            DateTime winterSolstice = new DateTime(currentDate.Year, 12, 21);
-            DateTime summerSolstice = new DateTime(currentDate.Year, 6, 21);
-
-            if (currentDate == summerSolstice)
-            {
-                summerSolstice = new DateTime(currentDate.Year + 1, 6, 21);
-                await Console.Out.WriteLineAsync("It's the summer solstice.");
-            }
-            else if (currentDate == winterSolstice)
-            {
-                winterSolstice = new DateTime(currentDate.Year + 1, 12, 21);
-                await Console.Out.WriteLineAsync("It's the winter solstice.");
-            }
-            
-            if (currentDate >= winterSolstice && currentDate <= summerSolstice)
-            {
-                await Program.HandleGetTodaysInfo(chatId, botToken, weatherApiManager);
-            }
-            else
-            {
-                await Console.Out.WriteLineAsync("Wait till the next solstice.");
-            }
-        }
-
-        private async Task ListenForMessagesAsync(CancellationToken cancellationToken)
-        {
-            var receiverOptions = new ReceiverOptions
-            {
-                AllowedUpdates = [UpdateType.Message]
-            };
-
-            botClient.StartReceiving(
-                updateHandler: HandleUpdateAsync,
-                pollingErrorHandler: HandlePollingErrorAsync,
-                receiverOptions: receiverOptions,
-                cancellationToken: cancellationToken
-            );
-
-            try
-            {
-                await Task.Delay(Timeout.Infinite, cancellationToken);
-            }
-            catch (TaskCanceledException)
-            {
-                Console.WriteLine("Bot receiving has been cancelled.");
-            }
-        }
-
-        private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
-        {
-            if (update.Message is not { } message)
-            {
-                return;
-            }
-
-            chatId = message.Chat.Id;
-
-            if (message.Text != null && message.Text.StartsWith("/gettodaysinfo"))
-            {
-                await Program.HandleGetTodaysInfo(chatId, botToken, weatherApiManager);
-            }
-        }
-
-        private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
-        {
-            var errorMessage = exception switch
-            {
-                ApiRequestException apiRequestException
-                    => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
-                _ => exception.ToString()
-            };
-
-            Console.WriteLine(errorMessage);
-            return Task.CompletedTask;
+            return targetTime - DateTime.UtcNow;
         }
 
         public void Dispose()

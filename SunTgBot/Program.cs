@@ -15,7 +15,7 @@ namespace SunTgBot
 
             if (botManager != null)
             {
-                await botManager.StartBot();
+                await botManager.StartBotAsync();
             }
             else
             {
