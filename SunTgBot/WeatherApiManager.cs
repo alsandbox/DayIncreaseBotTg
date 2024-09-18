@@ -1,181 +1,42 @@
-﻿using Microsoft.Extensions.Configuration;
-
-namespace SunTgBot
+﻿namespace SunTgBot
 {
     internal class WeatherApiManager
     {
-        private readonly string ApiUrl;
+        private readonly WeatherApiClient weatherApiClient;
 
-        public WeatherApiManager(IConfiguration configuration)
+        public WeatherApiManager(WeatherApiClient weatherApiClient)
         {
-            ApiUrl = configuration["ApiSettings:SunriseSunsetApiUrl"]
-                     ?? throw new ArgumentNullException(nameof(configuration), "API URL not configured");
+            this.weatherApiClient = weatherApiClient;
         }
 
-        internal async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
+        public async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
         {
             DateTime yesterday = date.AddDays(-1).ToUniversalTime();
             DateTime shortestDay = new DateTime(2023, 12, 22, 0, 0, 0, DateTimeKind.Utc);
 
-            string formattedDate = date.ToString("yyyy-MM-dd");
-            string formattedYesterdayDate = yesterday.ToString("yyyy-MM-dd");
-            string formattedShortestDay = shortestDay.ToString("yyyy-MM-dd");
-
-            string apiUrlToday = $"{ApiUrl}?lat={latitude}&lng={longitude}&date={formattedDate}&formatted=0&tzId={tzId}";
-            string apiUrlYesterday = $"{ApiUrl}?lat={latitude}&lng={longitude}&date={formattedYesterdayDate}&formatted=0&tzId={tzId}";
-            string apiUrlShortestDay = $"{ApiUrl}?lat={latitude}&lng={longitude}&date={formattedShortestDay}&formatted=0&tzId={tzId}";
-
-            WeatherData defaultWeatherData = new WeatherData();
-
-            using HttpClient client = new();
             try
             {
-                HttpResponseMessage responseToday = await client.GetAsync(apiUrlToday);
-                HttpResponseMessage responseYesterday = await client.GetAsync(apiUrlYesterday);
-                HttpResponseMessage responseShortestDay = await client.GetAsync(apiUrlShortestDay);
+                string resultToday = await weatherApiClient.GetWeatherDataAsync(latitude, longitude, date, tzId);
+                string resultYesterday = await weatherApiClient.GetWeatherDataAsync(latitude, longitude, yesterday, tzId);
+                string resultShortestDay = await weatherApiClient.GetWeatherDataAsync(latitude, longitude, shortestDay, tzId);
 
-                if (responseToday.IsSuccessStatusCode && responseYesterday.IsSuccessStatusCode)
+                string sunriseTime = WeatherDataParser.ParseSunriseTime(resultToday);
+                string sunsetTime = WeatherDataParser.ParseSunsetTime(resultToday);
+                string dayLength = WeatherDataParser.ParseDayLength(resultToday, resultYesterday, resultShortestDay);
+
+                var weatherInfo = new
                 {
-                    string resultToday = await responseToday.Content.ReadAsStringAsync();
-                    string resultYesterday = await responseYesterday.Content.ReadAsStringAsync();
-                    string resultShortestDay = await responseShortestDay.Content.ReadAsStringAsync();
+                    SunriseTime = sunriseTime,
+                    SunsetTime = sunsetTime,
+                    DayLength = dayLength
+                };
 
-                    string sunriseTime = ParseSunriseTime(resultToday);                    
-                    string sunsetTime = ParseSunsetTime(resultToday);
-                    string dayLength = ParseDayLength(resultToday, resultYesterday, resultShortestDay);
-
-                    var weatherInfo = new
-                    {
-                        SunriseTime = sunriseTime,
-                        SunsetTime = sunsetTime,
-                        DayLength = dayLength
-                    };
-
-                    string weatherInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(weatherInfo);
-
-                    return weatherInfoJson;
-                }
-                else
-                {
-                    Console.WriteLine($"Error: {responseToday.StatusCode}");
-                    Console.WriteLine($"Error: {responseYesterday.StatusCode}");
-                    return Newtonsoft.Json.JsonConvert.SerializeObject(defaultWeatherData);
-                }
+                return Newtonsoft.Json.JsonConvert.SerializeObject(weatherInfo);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Exception: {ex.Message}");
-                return Newtonsoft.Json.JsonConvert.SerializeObject(defaultWeatherData);
-            }
-        }
-
-        private static string ParseSunriseTime(string apiResponse)
-        {
-            try
-            {
-                var jsonResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponse);
-                var sunrise = jsonResult?.results.sunrise;
-
-                if (sunrise is not null && DateTimeOffset.TryParse((string)sunrise,
-                                            System.Globalization.CultureInfo.InvariantCulture,
-                                            System.Globalization.DateTimeStyles.None,
-                                            out DateTimeOffset sunriseDateTimeOffset))
-                {
-                    TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
-
-                    DateTime sunsetDateTime = TimeZoneInfo.ConvertTime(sunriseDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, desiredTimeZone);
-
-                    return sunsetDateTime.ToString("HH:mm:ss");
-                }
-                else
-                {
-                    return "Error parsing sunrise date and time";
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing JSON: {ex.Message}");
-                throw;
-            }
-        }
-
-        private static string ParseSunsetTime(string apiResponse)
-        {
-            try
-            {
-                var jsonResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponse);
-                var sunset = jsonResult?.results.sunset;
-
-                if (sunset is not null && DateTimeOffset.TryParse((string)sunset,
-                                            System.Globalization.CultureInfo.InvariantCulture,
-                                            System.Globalization.DateTimeStyles.None,
-                                            out DateTimeOffset sunsetDateTimeOffset))
-                {
-                    TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
-
-                    DateTime sunsetDateTime = TimeZoneInfo.ConvertTime(sunsetDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, desiredTimeZone);
-
-                    return sunsetDateTime.ToString("HH:mm:ss");
-                }
-                else
-                {
-                    return "Error parsing sunset date and time";
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing JSON: {ex.Message}");
-                throw;
-            }
-        }
-
-        private static string ParseDayLength(string apiResponseToday, string apiResponseYesterday, string apiResponseShortestDay)
-        {
-            try
-            {
-                var jsonResultToday = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponseToday);
-                var jsonResultYesterday = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponseYesterday);
-                var jsonResultShortestDay = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(apiResponseShortestDay);
-
-                var dayLengthSecondsToday = jsonResultToday?.results.day_length;
-                var dayLengthSecondsYesterday = jsonResultYesterday?.results.day_length;
-                var dayLengthSecondsShortestDay = jsonResultShortestDay?.results.day_length;
-
-                long dayLengthDifference = dayLengthSecondsToday - dayLengthSecondsYesterday;
-                long shortestDayLengthDifference = dayLengthSecondsToday - dayLengthSecondsShortestDay;
-
-                if (dayLengthSecondsToday != null && dayLengthSecondsYesterday != null)
-                {
-                    TimeSpan dayLengthTodayTimeSpan = TimeSpan.FromSeconds((long)dayLengthSecondsToday);
-                    TimeSpan dayLengthDifferenceTimeSpan = TimeSpan.FromSeconds(dayLengthDifference);
-                    TimeSpan shortestDayLengthDifferenceTimeSpan = TimeSpan.FromSeconds(shortestDayLengthDifference);
-
-                    int hoursToday = dayLengthTodayTimeSpan.Hours;
-                    int minutesToday = dayLengthTodayTimeSpan.Minutes;
-                    int secondsToday = dayLengthTodayTimeSpan.Seconds;
-
-                    int hoursYesterday = dayLengthDifferenceTimeSpan.Hours;
-                    int minutesYesterday = dayLengthDifferenceTimeSpan.Minutes;
-                    int secondsYesterday = dayLengthDifferenceTimeSpan.Seconds;
-                    
-                    int hoursFromShortestDay = shortestDayLengthDifferenceTimeSpan.Hours;
-                    int minutesFromShortestDay = shortestDayLengthDifferenceTimeSpan.Minutes;
-                    int secondsFromShortestDay = shortestDayLengthDifferenceTimeSpan.Seconds;
-
-                    string formattedDayLength = $"{hoursToday:D2}:{minutesToday:D2}:{secondsToday:D2}" +
-                        $"\nThe difference between yesterday and today: {hoursYesterday:D2}:{minutesYesterday:D2}:{secondsYesterday:D2}" +
-                        $"\nThe difference between today and the shortest day (22.12.2023): {hoursFromShortestDay:D2}:{minutesFromShortestDay:D2}:{secondsFromShortestDay:D2}";
-                    return formattedDayLength;
-                }
-                else
-                {
-                    return "Error: dayLengthSeconds is null";
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing JSON: {ex.Message}");
-                throw;
+                Console.WriteLine($"Error: {ex.Message}");
+                return Newtonsoft.Json.JsonConvert.SerializeObject(new { Error = "Failed to fetch weather data" });
             }
         }
     }
