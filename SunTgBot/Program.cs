@@ -9,7 +9,12 @@ namespace SunTgBot
         static async Task Main(string[] args)
         {
             Console.WriteLine("Reading bot token...");
-            string botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
+            string? botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
+
+            if (botToken is null)
+            {
+                throw new ArgumentNullException($"Bot token '{botToken}' is not provided.");
+            }
 
             var botManager = ConfigureBotManager(botToken);
 
