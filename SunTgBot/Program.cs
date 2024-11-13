@@ -9,8 +9,7 @@ namespace SunTgBot
         static async Task Main(string[] args)
         {
             Console.WriteLine("Reading bot token...");
-            //string botToken = GetTokenFromArgsOrEnv(args, "BOT_TOKEN");
-            string botToken = "6580886307:AAH5p2YJUkf3v8CWtODopMTz3oZ67zDAkcY";
+            string botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
 
             var botManager = ConfigureBotManager(botToken);
 
@@ -53,18 +52,6 @@ namespace SunTgBot
                 return null;
             }
         }
-
-        static string GetTokenFromArgsOrEnv(string[] args, string envVarName)
-        {
-            string? token = args.Length > 0 ? args[0] : Environment.GetEnvironmentVariable(envVarName);
-
-            if (string.IsNullOrEmpty(token))
-            {
-                throw new ArgumentException($"The bot token must be provided via command-line arguments or the {envVarName} environment variable.");
-            }
-            return token;
-        }
-
 
         private static ServiceProvider ConfigureServices()
         {
