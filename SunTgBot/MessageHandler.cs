@@ -9,13 +9,11 @@ namespace SunTgBot
     internal class MessageHandler
     {
         private bool isDaylightIncreasing;
-        private readonly string botToken;
         private readonly WeatherApiManager weatherApiManager;
         private readonly TelegramBotClient botClient;
 
-        internal MessageHandler(string botToken, WeatherApiManager weatherApiManager, TelegramBotClient botClient)
+        internal MessageHandler(WeatherApiManager weatherApiManager, TelegramBotClient botClient)
         {
-            this.botToken = botToken;
             this.weatherApiManager = weatherApiManager;
             this.botClient = botClient;
         }
