@@ -33,60 +33,29 @@ namespace SunTgBot
 
         private static (bool isSolsticeDay, string solsticeType, bool isDaylightIncreasing) GetSolsticeStatus(DateTime currentDate)
         {
-            DateTime winterSolstice = new DateTime(currentDate.Year, 12, 21, 0, 0, 0, DateTimeKind.Local);
-            DateTime summerSolstice = new DateTime(currentDate.Year, 6, 21, 0, 0, 0, DateTimeKind.Local);
+            var solstice = SolsticeData.GetSolsticeByYear(currentDate.Year);
 
             bool isSolsticeDay = false;
             string solsticeType = string.Empty;
-            bool isDayIncreasing = false;
+            bool isDaylightIncreasing = false;
 
-            if (currentDate == winterSolstice)
+            if (solstice == null) return (isSolsticeDay, solsticeType, isDaylightIncreasing);
+
+            if (currentDate == solstice.Value.Winter)
             {
                 isSolsticeDay = true;
                 solsticeType = "winter";
-                winterSolstice = winterSolstice.AddYears(1);
             }
-            else if (currentDate == summerSolstice)
+            else if (currentDate == solstice.Value.Summer)
             {
                 isSolsticeDay = true;
                 solsticeType = "summer";
-                summerSolstice = summerSolstice.AddYears(1);
             }
 
-            isDayIncreasing = currentDate >= winterSolstice && currentDate < summerSolstice;
-            return (isSolsticeDay, solsticeType, isDayIncreasing);
-        private async Task HandleGetTodaysInfo(long chatId)
-        {
-            DateTime date = DateTime.Now.Date.ToLocalTime();
-            float latitude = 51.759050f;
-            float longitude = 19.458600f;
-            string tzId = "Europe/Warsaw";
+            isDaylightIncreasing = currentDate >= solstice.Value.Winter && currentDate < solstice.Value.Summer;
+            return (isSolsticeDay, solsticeType, isDaylightIncreasing);
+        }
 
-            string weatherDataJson = await weatherApiManager.GetTimeAsync(latitude, longitude, date, tzId);
-
-            if (!string.IsNullOrEmpty(weatherDataJson))
-            {
-                WeatherData? weatherData = Newtonsoft.Json.JsonConvert.DeserializeObject<WeatherData>(weatherDataJson);
-
-                if (weatherData != null)
-                {
-                    string sunriseTimeString = weatherData.SunriseTime?.ToString() ?? "N/A";
-                    string sunsetTimeString = weatherData.SunsetTime?.ToString() ?? "N/A";
-                    string dayLengthString = weatherData.DayLength?.ToString() ?? "N/A";
-
-                    await botClient.SendTextMessageAsync(chatId, $"Sunrise time: {sunriseTimeString}" +
-                        $"\nSunset time: {sunsetTimeString}" +
-                        $"\nThe day length: {dayLengthString}");
-                }
-                else
-                {
-                    await botClient.SendTextMessageAsync(chatId, "Unable to retrieve weather data.");
-                }
-            }
-            else
-            {
-                Console.WriteLine("Error fetching weather data");
-            }
         }
 
         public async Task ListenForMessagesAsync(CancellationToken cancellationToken)
