@@ -92,11 +92,28 @@ namespace SunTgBot
 
                 if (isDaylightIncreasing)
                 {
-                    await Program.HandleGetTodaysInfo(chatId, botToken, weatherApiManager);
+                    await HandleGetTodaysInfo(chatId);
                 }
                 else
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Daylight hours are shortening, wait for the next solstice.");
+                    await botClient.SendTextMessageAsync(chatId, "Daylight hours are shortening, wait for the winter solstice.");
+                }
+            }
+
+            if (update.Message?.Text?.StartsWith("/getdaystillsolstice") == true)
+            {
+                await SendDailyMessageAsync();
+                long chatId = update.Message.Chat.Id;
+
+                if (!isDaylightIncreasing)
+                {
+                    DateTime today = DateTime.Now;
+                    
+                    await botClient.SendTextMessageAsync(chatId, $"Days till the solstice: {WeatherDataParser.CalculateDaysTillNearestSolstice(today)}.");
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(chatId, "Daylight hours are increasing, wait for the summer solstice.");
                 }
             }
         }
