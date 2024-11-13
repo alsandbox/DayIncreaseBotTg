@@ -96,5 +96,22 @@ namespace SunTgBot
 
             return formattedDayLength;
         }
+
+        internal static int CalculateDaysTillNearestSolstice(DateTime today)
+        {
+            TimeSpan date;
+            var solstice = SolsticeData.GetSolsticeByYear(today.Year);
+
+            if (today.Month <= 7)
+            {
+                date = solstice.Value.Summer - today;
+            }
+            else
+            {
+                date = solstice.Value.Winter - today;
+            }
+
+            return date.Days;
+        }
     }
 }
