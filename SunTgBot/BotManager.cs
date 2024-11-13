@@ -13,7 +13,8 @@ namespace SunTgBot
             TelegramBotClient botClient = new TelegramBotClient(botToken);
             cts = new CancellationTokenSource();
             WeatherApiManager _weatherApiManager = weatherApiManager;
-            messageHandler = new MessageHandler(_weatherApiManager, botClient);
+            LocationService locationService = new LocationService(botClient, _weatherApiManager);
+            messageHandler = new MessageHandler(_weatherApiManager, locationService, botClient);
         }
 
         public async Task StartBotAsync()
