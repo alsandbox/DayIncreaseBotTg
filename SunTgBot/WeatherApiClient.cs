@@ -14,10 +14,10 @@ namespace SunTgBot
                      ?? throw new ArgumentNullException(nameof(configuration), "API URL not configured");
         }
 
-        public async Task<string> GetWeatherDataAsync(float latitude, float longitude, DateTime date, string tzId)
+        public async Task<string> GetWeatherDataAsync(double latitude, double longitude, DateTime date)
         {
             string formattedDate = date.ToString("yyyy-MM-dd");
-            string apiUrl = $"{ApiUrl}?lat={latitude}&lng={longitude}&date={formattedDate}&formatted=0&tzId={tzId}";
+            string apiUrl = $"{ApiUrl}?lat={latitude}&lng={longitude}&date={formattedDate}&formatted=0";
 
             using HttpClient client = new();
             try

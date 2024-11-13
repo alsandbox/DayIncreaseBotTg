@@ -3,13 +3,15 @@
     internal class WeatherApiManager
     {
         private readonly WeatherApiClient weatherApiClient;
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
 
         public WeatherApiManager(WeatherApiClient weatherApiClient)
         {
             this.weatherApiClient = weatherApiClient;
         }
 
-        public async Task<string> GetTimeAsync(float latitude, float longitude, DateTime date, string tzId)
+        public async Task<string> GetTimeAsync(DateTime date)
         {
             DateTime yesterday = date.AddDays(-1).ToUniversalTime();
             var solstice = SolsticeData.GetSolsticeByYear(date.Year);
@@ -21,9 +23,9 @@
 
             try
             {
-                string resultToday = await weatherApiClient.GetWeatherDataAsync(latitude, longitude, date, tzId);
-                string resultYesterday = await weatherApiClient.GetWeatherDataAsync(latitude, longitude, yesterday, tzId);
-                string resultShortestDay = await weatherApiClient.GetWeatherDataAsync(latitude, longitude, solstice.Value.Winter, tzId);
+                string resultToday = await weatherApiClient.GetWeatherDataAsync(Latitude, Longitude, date);
+                string resultYesterday = await weatherApiClient.GetWeatherDataAsync(Latitude, Longitude, yesterday);
+                string resultShortestDay = await weatherApiClient.GetWeatherDataAsync(Latitude, Longitude, solstice.Value.Winter);
 
                 string sunriseTime = WeatherDataParser.ParseSunriseTime(resultToday);
                 string sunsetTime = WeatherDataParser.ParseSunsetTime(resultToday);
