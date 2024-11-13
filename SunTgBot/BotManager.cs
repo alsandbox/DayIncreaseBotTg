@@ -8,12 +8,12 @@ namespace SunTgBot
         private bool disposed;
         private readonly MessageHandler messageHandler;
 
-
         public BotManager(string botToken, WeatherApiManager weatherApiManager)
         {
             TelegramBotClient botClient = new TelegramBotClient(botToken);
             cts = new CancellationTokenSource();
-            messageHandler = new MessageHandler(botToken, weatherApiManager, botClient);
+            WeatherApiManager _weatherApiManager = weatherApiManager;
+            messageHandler = new MessageHandler(_weatherApiManager, botClient);
         }
 
         public async Task StartBotAsync()
