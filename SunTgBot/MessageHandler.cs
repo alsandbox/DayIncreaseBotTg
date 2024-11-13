@@ -35,28 +35,29 @@ namespace SunTgBot
 
         private static (bool isSolsticeDay, string solsticeType, bool isDaylightIncreasing) GetSolsticeStatus(DateTime currentDate)
         {
-            DateTime winterSolstice = new DateTime(currentDate.Year, 12, 21, 0, 0, 0, DateTimeKind.Local);
-            DateTime summerSolstice = new DateTime(currentDate.Year, 6, 21, 0, 0, 0, DateTimeKind.Local);
+            var solstice = SolsticeData.GetSolsticeByYear(currentDate.Year);
 
             bool isSolsticeDay = false;
             string solsticeType = string.Empty;
-            bool isDayIncreasing = false;
+            bool isDaylightIncreasing = false;
 
-            if (currentDate == winterSolstice)
+            if (solstice == null) return (isSolsticeDay, solsticeType, isDaylightIncreasing);
+
+            if (currentDate == solstice.Value.Winter)
             {
                 isSolsticeDay = true;
                 solsticeType = "winter";
-                winterSolstice = winterSolstice.AddYears(1);
             }
-            else if (currentDate == summerSolstice)
+            else if (currentDate == solstice.Value.Summer)
             {
                 isSolsticeDay = true;
                 solsticeType = "summer";
-                summerSolstice = summerSolstice.AddYears(1);
             }
 
-            isDayIncreasing = currentDate >= winterSolstice && currentDate < summerSolstice;
-            return (isSolsticeDay, solsticeType, isDayIncreasing);
+            isDaylightIncreasing = currentDate >= solstice.Value.Winter && currentDate < solstice.Value.Summer;
+            return (isSolsticeDay, solsticeType, isDaylightIncreasing);
+        }
+
         }
 
         public async Task ListenForMessagesAsync(CancellationToken cancellationToken)
