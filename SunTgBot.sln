@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34322.80
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SunTgBot", "SunTgBot\SunTgBot.csproj", "{7F7744B0-F1C7-475D-8F49-91B732D79D82}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DayIncrease", "SunTgBot\DayIncrease.csproj", "{7F7744B0-F1C7-475D-8F49-91B732D79D82}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
