@@ -65,12 +65,9 @@ namespace DayIncrease
                 replyMarkup: new ReplyKeyboardRemove(),
                 cancellationToken: cancellationToken
             );
-            Console.WriteLine($"api.Latitude: {api.Latitude}, api.Longitude{api.Longitude}");
 
             api.Latitude = latitudeFromUser;
             api.Longitude = longitudeFromUser;
-            Console.WriteLine($"api.Latitude: {api.Latitude}, api.Longitude{api.Longitude}");
-
         }
     }
 }
