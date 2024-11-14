@@ -9,8 +9,8 @@ RUN dotnet restore
 RUN dotnet publish -c Release -o out
 
 # Build runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
 WORKDIR /app
 COPY --from=build-env /SunTgBot/SunTgBot/out .
-ENTRYPOINT ["dotnet", "SunTgBot.dll"]
+ENTRYPOINT ["dotnet", "DayIncrease.dll"]
 
