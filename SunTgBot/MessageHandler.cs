@@ -85,7 +85,6 @@ namespace DayIncrease
         private async Task HandleGetTodaysInfo(long chatId)
         {
             DateTime date = DateTime.Now.Date.ToLocalTime();
-            //string tzId = "Europe/Warsaw";
 
             string weatherDataJson = await weatherApiManager.GetTimeAsync(date);
 
@@ -170,7 +169,6 @@ namespace DayIncrease
                     switch (command)
                     {
                         case "/start":
-                            //await HandleStartCommandAsync(cancellationToken);
                             break;
                         case "/gettodaysinfo":
                             await HandleDaylightInfoAsync(chatId);
