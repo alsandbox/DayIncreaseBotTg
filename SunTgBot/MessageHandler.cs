@@ -169,6 +169,7 @@ namespace DayIncrease
                     switch (command)
                     {
                         case "/start":
+                            await botClient.SendTextMessageAsync(chatId, "Bot started! Use available commands to interact.");
                             break;
                         case "/gettodaysinfo":
                             await HandleDaylightInfoAsync(chatId);
