@@ -4,7 +4,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 
-namespace SunTgBot
+namespace DayIncrease
 {
     internal class MessageHandler
     {
