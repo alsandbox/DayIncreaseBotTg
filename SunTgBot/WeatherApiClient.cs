@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.Configuration;
 
-namespace SunTgBot
+namespace DayIncrease
 {
     internal class WeatherApiClient
     {

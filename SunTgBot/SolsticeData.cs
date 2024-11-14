@@ -1,4 +1,4 @@
-﻿namespace SunTgBot
+﻿namespace DayIncrease
 {
     internal static class SolsticeData
     {

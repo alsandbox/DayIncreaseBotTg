@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 
-namespace SunTgBot
+namespace DayIncrease
 {
     internal static class Program
     {

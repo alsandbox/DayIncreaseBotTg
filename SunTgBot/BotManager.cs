@@ -1,5 +1,5 @@
 ﻿using Telegram.Bot;
-namespace SunTgBot
+namespace DayIncrease
 {
     internal class BotManager : IDisposable
     {

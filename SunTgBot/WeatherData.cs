@@ -1,4 +1,4 @@
-﻿namespace SunTgBot
+﻿namespace DayIncrease
 {
     public class WeatherData
     {

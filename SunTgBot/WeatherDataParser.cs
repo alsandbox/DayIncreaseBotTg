@@ -2,7 +2,7 @@
 
 using System.Globalization;
 
-namespace SunTgBot
+namespace DayIncrease
 {
     internal static class WeatherDataParser
     {
