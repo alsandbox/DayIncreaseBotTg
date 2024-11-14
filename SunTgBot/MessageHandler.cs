@@ -10,11 +10,13 @@ namespace SunTgBot
     {
         private bool isDaylightIncreasing;
         private readonly WeatherApiManager weatherApiManager;
+        private readonly LocationService locationService;
         private readonly TelegramBotClient botClient;
 
-        internal MessageHandler(WeatherApiManager weatherApiManager, TelegramBotClient botClient)
+        internal MessageHandler(WeatherApiManager weatherApiManager, LocationService locationService, TelegramBotClient botClient)
         {
             this.weatherApiManager = weatherApiManager;
+            this.locationService = locationService;
             this.botClient = botClient;
         }
 
@@ -56,14 +58,36 @@ namespace SunTgBot
             return (isSolsticeDay, solsticeType, isDaylightIncreasing);
         }
 
+        public async Task ListenForMessagesAsync(CancellationToken cancellationToken)
+        {
+            var receiverOptions = new ReceiverOptions
+            {
+                AllowedUpdates = [UpdateType.Message]
+            };
+
+            botClient.StartReceiving(
+                updateHandler: HandleUpdateAsync,
+                pollingErrorHandler: HandlePollingErrorAsync,
+                receiverOptions: receiverOptions,
+                cancellationToken: cancellationToken
+            );
+
+            try
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("Bot receiving has been cancelled.");
+            }
+        }
+
         private async Task HandleGetTodaysInfo(long chatId)
         {
             DateTime date = DateTime.Now.Date.ToLocalTime();
-            float latitude = 51.759050f;
-            float longitude = 19.458600f;
-            string tzId = "Europe/Warsaw";
+            //string tzId = "Europe/Warsaw";
 
-            string weatherDataJson = await weatherApiManager.GetTimeAsync(latitude, longitude, date, tzId);
+            string weatherDataJson = await weatherApiManager.GetTimeAsync(date);
 
             if (!string.IsNullOrEmpty(weatherDataJson))
             {
@@ -90,62 +114,93 @@ namespace SunTgBot
             }
         }
 
-        public async Task ListenForMessagesAsync(CancellationToken cancellationToken)
+        private async Task HandleDaylightInfoAsync(long chatId)
         {
-            var receiverOptions = new ReceiverOptions
+            if (weatherApiManager.Latitude <= 0 && weatherApiManager.Longitude <= 0)
             {
-                AllowedUpdates = [UpdateType.Message]
-            };
-
-            botClient.StartReceiving(
-                updateHandler: HandleUpdateAsync,
-                pollingErrorHandler: HandlePollingErrorAsync,
-                receiverOptions: receiverOptions,
-                cancellationToken: cancellationToken
-            );
-
-            try
-            {
-                await Task.Delay(Timeout.Infinite, cancellationToken);
+                await locationService.RequestLocationAsync(chatId, CancellationToken.None);
+                return;
             }
-            catch (TaskCanceledException)
+
+            await SendDailyMessageAsync();
+
+            if (isDaylightIncreasing)
             {
-                Console.WriteLine("Bot receiving has been cancelled.");
+                await HandleGetTodaysInfo(chatId);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(chatId, "Daylight hours are shortening, wait for the winter solstice.");
+            }
+        }
+
+        private async Task HandleDaysTillSolsticeAsync(long chatId)
+        {
+            if (weatherApiManager.Latitude <= 0 && weatherApiManager.Longitude <= 0)
+            {
+                await locationService.RequestLocationAsync(chatId, CancellationToken.None);
+                return;
+            }
+
+            await SendDailyMessageAsync();
+
+            if (!isDaylightIncreasing)
+            {
+                DateTime today = DateTime.Now;
+                await botClient.SendTextMessageAsync(chatId, $"Days till the solstice: {WeatherDataParser.CalculateDaysTillNearestSolstice(today)}.");
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(chatId, "Daylight hours are increasing, wait for the summer solstice.");
             }
         }
 
         public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            if (update.Message?.Text?.StartsWith("/gettodaysinfo") == true)
+            try
             {
-                await SendDailyMessageAsync();
-                long chatId = update.Message.Chat.Id;
+                if (update.Message is not { } message) return;
 
-                if (isDaylightIncreasing)
+                long chatId = message.Chat.Id;
+
+                if (message.Type == MessageType.Text && message.Text is not null)
                 {
-                    await HandleGetTodaysInfo(chatId);
+                    var command = message.Text.Split(' ')[0];
+
+                    switch (command)
+                    {
+                        case "/start":
+                            //await HandleStartCommandAsync(cancellationToken);
+                            break;
+                        case "/gettodaysinfo":
+                            await HandleDaylightInfoAsync(chatId);
+                            break;
+                        case "/changelocation":
+                            await locationService.RequestLocationAsync(chatId, cancellationToken);
+                            break;
+                        case "/getdaystillsolstice":
+                            await HandleDaysTillSolsticeAsync(chatId);
+                            break;
+                    }
                 }
-                else
+
+                if (message.Type == MessageType.Location)
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Daylight hours are shortening, wait for the winter solstice.");
-                }
+                    await locationService.HandleLocationReceivedAsync(message, cancellationToken);
+
+                    if (locationService.IsLocationReceived)
+                    {
+                        locationService.IsLocationReceived = false;
+                    }
+                }                
             }
-
-            if (update.Message?.Text?.StartsWith("/getdaystillsolstice") == true)
+            catch (ApiRequestException apiEx) when (apiEx.ErrorCode == 400 && apiEx.Message.Contains("query is too old"))
             {
-                await SendDailyMessageAsync();
-                long chatId = update.Message.Chat.Id;
-
-                if (!isDaylightIncreasing)
-                {
-                    DateTime today = DateTime.Now;
-                    
-                    await botClient.SendTextMessageAsync(chatId, $"Days till the solstice: {WeatherDataParser.CalculateDaysTillNearestSolstice(today)}.");
-                }
-                else
-                {
-                    await botClient.SendTextMessageAsync(chatId, "Daylight hours are increasing, wait for the summer solstice.");
-                }
+                Console.WriteLine($"API request error: {apiEx.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unhandled exception in HandleUpdateAsync: {ex.Message}");
             }
         }
 
