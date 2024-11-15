@@ -74,11 +74,15 @@ namespace DayIncrease
 
             try
             {
-                await Task.Delay(Timeout.Infinite, cancellationToken);
+                await Task.WhenAny(Task.Delay(Timeout.Infinite, cancellationToken));
             }
             catch (TaskCanceledException)
             {
                 Console.WriteLine("Bot receiving has been cancelled.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
             }
         }
 
