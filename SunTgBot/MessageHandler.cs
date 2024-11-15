@@ -121,7 +121,15 @@ namespace DayIncrease
         {
             if (weatherApiManager.Latitude <= 0 && weatherApiManager.Longitude <= 0)
             {
-                await locationService.RequestLocationAsync(chatId, CancellationToken.None);
+                var chat = await botClient.GetChatAsync(chatId);
+                if (chat.Type == ChatType.Private)
+                {
+                    await locationService.RequestLocationAsync(chatId, CancellationToken.None);
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(chatId, "Please send your location to proceed.");
+                }
                 return;
             }
 
@@ -139,12 +147,6 @@ namespace DayIncrease
 
         private async Task HandleDaysTillSolsticeAsync(long chatId)
         {
-            if (weatherApiManager.Latitude <= 0 && weatherApiManager.Longitude <= 0)
-            {
-                await locationService.RequestLocationAsync(chatId, CancellationToken.None);
-                return;
-            }
-
             await SendDailyMessageAsync();
 
             if (!isDaylightIncreasing)
@@ -168,7 +170,15 @@ namespace DayIncrease
 
                 if (message.Type == MessageType.Text && message.Text is not null)
                 {
-                    var command = message.Text.Split(' ')[0];
+                    string command = message.Text.Split(' ')[0];
+                    int atIndex = command.IndexOf('@');
+
+                    if (atIndex >= 0)
+                    {
+                        command = command.Substring(0, atIndex);
+                    }
+
+                    Console.WriteLine($"Received command: {command}");
 
                     switch (command)
                     {
@@ -179,7 +189,14 @@ namespace DayIncrease
                             await HandleDaylightInfoAsync(chatId);
                             break;
                         case "/changelocation":
-                            await locationService.RequestLocationAsync(chatId, cancellationToken);
+                            if (message.Chat.Type == ChatType.Private)
+                            {
+                                await locationService.RequestLocationAsync(chatId, cancellationToken);
+                            }
+                            else
+                            {
+                                await botClient.SendTextMessageAsync(chatId, "Please send your location to proceed.");
+                            }
                             break;
                         case "/getdaystillsolstice":
                             await HandleDaysTillSolsticeAsync(chatId);
