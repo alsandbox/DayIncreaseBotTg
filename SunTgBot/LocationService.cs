@@ -68,8 +68,6 @@ namespace DayIncrease
 
             api.Latitude = latitudeFromUser;
             api.Longitude = longitudeFromUser;
-
-            Console.WriteLine($"{api.Latitude}, {api.Longitude}");
         }
     }
 }

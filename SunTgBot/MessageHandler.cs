@@ -178,8 +178,6 @@ namespace DayIncrease
                         command = command.Substring(0, atIndex);
                     }
 
-                    Console.WriteLine($"Received command: {command}");
-
                     switch (command)
                     {
                         case "/start":
