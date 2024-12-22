@@ -36,25 +36,32 @@ namespace DayIncrease
         private static (bool isSolsticeDay, string solsticeType, bool isDaylightIncreasing) GetSolsticeStatus(DateTime currentDate)
         {
             var solstice = SolsticeData.GetSolsticeByYear(currentDate.Year);
+            if (solstice == null) return (false, string.Empty, false);
 
-            bool isSolsticeDay = false;
-            string solsticeType = string.Empty;
-            bool isDaylightIncreasing = false;
+            var winterSolstice = solstice.Value.Winter;
+            var summerSolstice = solstice.Value.Summer;
 
-            if (solstice == null) return (isSolsticeDay, solsticeType, isDaylightIncreasing);
-
-            if (currentDate == solstice.Value.Winter)
+            if (currentDate > winterSolstice)
             {
-                isSolsticeDay = true;
-                solsticeType = "winter";
+                var nextYearSolstice = SolsticeData.GetSolsticeByYear(currentDate.Year + 1);
+                if (nextYearSolstice != null)
+                {
+                    summerSolstice = nextYearSolstice.Value.Summer;
+                }
             }
-            else if (currentDate == solstice.Value.Summer)
+            else if (currentDate < summerSolstice)
             {
-                isSolsticeDay = true;
-                solsticeType = "summer";
+                var previousYearSolstice = SolsticeData.GetSolsticeByYear(currentDate.Year - 1);
+                if (previousYearSolstice != null)
+                {
+                    winterSolstice = previousYearSolstice.Value.Winter;
+                }
             }
 
-            isDaylightIncreasing = currentDate >= solstice.Value.Winter && currentDate < solstice.Value.Summer;
+            bool isSolsticeDay = currentDate == winterSolstice || currentDate == summerSolstice;
+            string solsticeType = isSolsticeDay ? (currentDate == winterSolstice ? "winter" : "summer") : string.Empty;
+            bool isDaylightIncreasing = currentDate > winterSolstice && currentDate < summerSolstice;
+
             return (isSolsticeDay, solsticeType, isDaylightIncreasing);
         }
 
