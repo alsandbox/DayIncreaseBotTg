@@ -9,6 +9,7 @@ namespace DayIncrease
         public bool IsLocationReceived { get; set; }
         private readonly TelegramBotClient botClient;
         private readonly WeatherApiManager api;
+        public Func<Task>? OnLocationReceived { get; set; }
 
         internal LocationService(TelegramBotClient botClient, WeatherApiManager api)
         {
@@ -30,7 +31,7 @@ namespace DayIncrease
                 OneTimeKeyboard = true
             };
 
-            await botClient.SendTextMessageAsync(
+            await botClient.SendMessage(
                 chatId: chatId,
                 text: "To receive the info, please share your location:",
                 replyMarkup: replyKeyboard,
@@ -44,7 +45,7 @@ namespace DayIncrease
 
             if (location is null || (location.Latitude <= 0 && location.Longitude <= 0))
             {
-                await botClient.SendTextMessageAsync(
+                await botClient.SendMessage(
                     chatId: message.Chat.Id,
                     text: "Invalid location received. Please try again.",
                     cancellationToken: cancellationToken
@@ -55,19 +56,22 @@ namespace DayIncrease
             }
 
             IsLocationReceived = true;
-            double latitudeFromUser = location.Latitude;
-            double longitudeFromUser = location.Longitude;
+            api.Latitude = location.Latitude;
+            api.Longitude = location.Longitude;
 
-            await botClient.SendTextMessageAsync(
+            await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: $"Location received. You can now start receiving information." +
-                $"To do this, use the commands /gettodaysinfo or /getdaystillsolstice. ",
+                text: "Location received. You can now start receiving information.",
                 replyMarkup: new ReplyKeyboardRemove(),
                 cancellationToken: cancellationToken
             );
 
-            api.Latitude = latitudeFromUser;
-            api.Longitude = longitudeFromUser;
+            if (OnLocationReceived != null)
+            {
+                var callback = OnLocationReceived;
+                OnLocationReceived = null;
+                await callback.Invoke();
+            }
         }
     }
 }
