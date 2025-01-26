@@ -3,68 +3,30 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
+using System.Globalization;
+using Telegram.Bot.Types.ReplyMarkups;
+using UVindexTGBot;
 
 namespace DayIncrease
 {
     internal class MessageHandler
     {
-        private bool isDaylightIncreasing;
         private readonly WeatherApiManager weatherApiManager;
         private readonly LocationService locationService;
         private readonly TelegramBotClient botClient;
+        private readonly UvUpdateScheduler uvUpdateScheduler;
+        private long chatId;
+        private bool isAwaitingCustomIntervalInput;
+        private readonly Dictionary<long, string> lastCommands = new();
 
-        internal MessageHandler(WeatherApiManager weatherApiManager, LocationService locationService, TelegramBotClient botClient)
+        internal MessageHandler(WeatherApiManager weatherApiManager, LocationService locationService, TelegramBotClient botClient, UvUpdateScheduler uvUpdateScheduler)
         {
             this.weatherApiManager = weatherApiManager;
             this.locationService = locationService;
             this.botClient = botClient;
+            this.uvUpdateScheduler = uvUpdateScheduler;
         }
-
-        public async Task SendDailyMessageAsync()
-        {
-            var today = DateTime.Now.Date;
-            var solsticeStatus = GetSolsticeStatus(today);
-
-            if (solsticeStatus.isSolsticeDay)
-            {
-                await Console.Out.WriteLineAsync($"It's the {solsticeStatus.solsticeType} solstice.");
-            }
-
-            isDaylightIncreasing = solsticeStatus.isDaylightIncreasing;
-        }
-
-        private static (bool isSolsticeDay, string solsticeType, bool isDaylightIncreasing) GetSolsticeStatus(DateTime currentDate)
-        {
-            var solstice = SolsticeData.GetSolsticeByYear(currentDate.Year);
-            if (solstice == null) return (false, string.Empty, false);
-
-            var winterSolstice = solstice.Value.Winter;
-            var summerSolstice = solstice.Value.Summer;
-
-            if (currentDate > winterSolstice)
-            {
-                var nextYearSolstice = SolsticeData.GetSolsticeByYear(currentDate.Year + 1);
-                if (nextYearSolstice != null)
-                {
-                    summerSolstice = nextYearSolstice.Value.Summer;
-                }
-            }
-            else if (currentDate < summerSolstice)
-            {
-                var previousYearSolstice = SolsticeData.GetSolsticeByYear(currentDate.Year - 1);
-                if (previousYearSolstice != null)
-                {
-                    winterSolstice = previousYearSolstice.Value.Winter;
-                }
-            }
-
-            bool isSolsticeDay = currentDate == winterSolstice || currentDate == summerSolstice;
-            string solsticeType = isSolsticeDay ? (currentDate == winterSolstice ? "winter" : "summer") : string.Empty;
-            bool isDaylightIncreasing = currentDate > winterSolstice && currentDate < summerSolstice;
-
-            return (isSolsticeDay, solsticeType, isDaylightIncreasing);
-        }
-
+ 
         public async Task ListenForMessagesAsync(CancellationToken cancellationToken)
         {
             var receiverOptions = new ReceiverOptions
@@ -73,10 +35,10 @@ namespace DayIncrease
             };
 
             botClient.StartReceiving(
-                updateHandler: HandleUpdateAsync,
-                pollingErrorHandler: HandlePollingErrorAsync,
-                receiverOptions: receiverOptions,
-                cancellationToken: cancellationToken
+                HandleUpdateAsync,
+                HandlePollingErrorAsync,
+                receiverOptions,
+                cancellationToken
             );
 
             try
@@ -109,13 +71,13 @@ namespace DayIncrease
                     string sunsetTimeString = weatherData.SunsetTime?.ToString() ?? "N/A";
                     string dayLengthString = weatherData.DayLength?.ToString() ?? "N/A";
 
-                    await botClient.SendTextMessageAsync(chatId, $"Sunrise time: {sunriseTimeString}" +
+                    await botClient.SendMessage(chatId, $"Sunrise time: {sunriseTimeString}" +
                         $"\nSunset time: {sunsetTimeString}" +
                         $"\nThe day length: {dayLengthString}");
                 }
                 else
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Unable to retrieve weather data.");
+                    await botClient.SendMessage(chatId, "Unable to retrieve weather data.");
                 }
             }
             else
@@ -128,42 +90,27 @@ namespace DayIncrease
         {
             if (weatherApiManager.Latitude <= 0 && weatherApiManager.Longitude <= 0)
             {
-                var chat = await botClient.GetChatAsync(chatId);
+                var chat = await botClient.GetChat(chatId);
                 if (chat.Type == ChatType.Private)
                 {
                     await locationService.RequestLocationAsync(chatId, CancellationToken.None);
                 }
                 else
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Please send your location to proceed.");
+                    await botClient.SendMessage(chatId, "Please send your location to proceed.");
                 }
                 return;
             }
 
-            await SendDailyMessageAsync();
+            await uvUpdateScheduler.SendDailyMessageAsync();
 
-            if (isDaylightIncreasing)
+            if (uvUpdateScheduler.isDaylightIncreasing)
             {
                 await HandleGetTodaysInfo(chatId);
             }
             else
             {
-                await botClient.SendTextMessageAsync(chatId, "Daylight hours are shortening, wait for the winter solstice.");
-            }
-        }
-
-        private async Task HandleDaysTillSolsticeAsync(long chatId)
-        {
-            await SendDailyMessageAsync();
-
-            if (!isDaylightIncreasing)
-            {
-                DateTime today = DateTime.Now;
-                await botClient.SendTextMessageAsync(chatId, $"Days till the solstice: {WeatherDataParser.CalculateDaysTillNearestSolstice(today)}.");
-            }
-            else
-            {
-                await botClient.SendTextMessageAsync(chatId, "Daylight hours are increasing, wait for the summer solstice.");
+                await botClient.SendMessage(chatId, "Daylight hours are shortening, wait for the winter solstice.");
             }
         }
 
@@ -173,7 +120,7 @@ namespace DayIncrease
             {
                 if (update.Message is not { } message) return;
 
-                long chatId = message.Chat.Id;
+               chatId = message.Chat.Id;
 
                 if (message.Type == MessageType.Text && message.Text is not null)
                 {
@@ -188,23 +135,70 @@ namespace DayIncrease
                     switch (command)
                     {
                         case "/start":
-                            await botClient.SendTextMessageAsync(chatId, "Bot started! Use available commands to interact.");
+                            await botClient.SendMessage(chatId, "Bot started! Use available commands to interact.");
                             break;
                         case "/gettodaysinfo":
-                            await HandleDaylightInfoAsync(chatId);
-                            break;
-                        case "/changelocation":
-                            if (message.Chat.Type == ChatType.Private)
+                            if (locationService.IsLocationReceived)
                             {
-                                await locationService.RequestLocationAsync(chatId, cancellationToken);
+                                await HandleDaylightInfoAsync(chatId);
                             }
                             else
                             {
-                                await botClient.SendTextMessageAsync(chatId, "Please send your location to proceed.");
+                                lastCommands[chatId] = command;
+                                locationService.OnLocationReceived = async () =>
+                                {
+                                    if (lastCommands.TryGetValue(chatId, out var savedCommand) && savedCommand == "/gettodaysinfo")
+                                    {
+                                        lastCommands.Remove(chatId);
+                                        await HandleDaylightInfoAsync(chatId);
+                                    }
+                                };
+
+                                await locationService.RequestLocationAsync(chatId, cancellationToken);
                             }
                             break;
+
+                        case "/changelocation":
+                            lastCommands[chatId] = command;
+                            locationService.OnLocationReceived = async () =>
+                            {
+                                if (lastCommands.TryGetValue(chatId, out var savedCommand) && savedCommand == "/changelocation")
+                                {
+                                    lastCommands.Remove(chatId);
+                                }
+                            };
+
+                            await locationService.RequestLocationAsync(chatId, cancellationToken);
+                            break;
+
                         case "/getdaystillsolstice":
-                            await HandleDaysTillSolsticeAsync(chatId);
+                            await uvUpdateScheduler.HandleDaysTillSolsticeAsync(chatId);
+                            break;
+                        case "/setintervals":
+                            if (locationService.IsLocationReceived)
+                            {
+                                uvUpdateScheduler.ScheduleUvUpdates(CancellationToken.None, chatId, async () => await HandleDaylightInfoAsync(chatId));
+                                await botClient.SendMessage(chatId, "The next message will be sent after 24 hours. You will receive messages every day until the summer solstice.");
+                            }
+                            else
+                            {
+                                lastCommands[chatId] = command;
+                                locationService.OnLocationReceived = async () =>
+                                {
+                                    if (lastCommands.TryGetValue(chatId, out var savedCommand) && savedCommand == "/setintervals")
+                                    {
+                                        lastCommands.Remove(chatId);
+                                        uvUpdateScheduler.ScheduleUvUpdates(CancellationToken.None, chatId, async () => await HandleDaylightInfoAsync(chatId));
+                                        await botClient.SendMessage(chatId, "The next message will be sent after 24 hours. You will receive messages every day until the summer solstice.");
+                                    }
+                                };
+
+                                await locationService.RequestLocationAsync(chatId, cancellationToken);
+                            }
+                            break;
+                        case "/cancelintervals":
+                            uvUpdateScheduler.CancelUvUpdates(cancellationToken);
+                            await botClient.SendMessage(chatId, "Intervals cancelled.");
                             break;
                     }
                 }
