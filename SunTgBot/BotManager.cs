@@ -1,29 +1,30 @@
 ﻿using Telegram.Bot;
 
-using UVindexTGBot;
-namespace DayIncrease
+namespace DayIncrease;
+
+internal class BotManager
 {
-    internal class BotManager
+    private readonly MessageHandler _messageHandler;
+    private readonly CancellationTokenSource _cts = new();
+    public BotManager(string botToken, WeatherApiManager weatherApiManager)
     {
-        private readonly CancellationTokenSource cts;
-        private readonly MessageHandler messageHandler;
+        var botClient = new TelegramBotClient(botToken);
+        var locationService = new LocationService(botClient, weatherApiManager);
+        var updateScheduler = new UpdateScheduler(botClient);
+        _messageHandler = new MessageHandler(weatherApiManager, locationService, botClient, updateScheduler);
+    }
 
-        public BotManager(string botToken, WeatherApiManager weatherApiManager)
+    public async Task StartBotAsync()
+    {
+        Console.CancelKeyPress += (s, e) =>
         {
-            TelegramBotClient botClient = new TelegramBotClient(botToken);
-            WeatherApiManager _weatherApiManager = weatherApiManager;
-            LocationService locationService = new LocationService(botClient, _weatherApiManager);
-            UvUpdateScheduler uvUpdateScheduler = new UvUpdateScheduler(botClient, _weatherApiManager);
-            messageHandler = new MessageHandler(_weatherApiManager, locationService, botClient, uvUpdateScheduler);
-        }
+            Console.WriteLine("Ctrl+C pressed!");
+            e.Cancel = true;
+            _cts.Cancel();
+        };
 
-        public async Task StartBotAsync()
-        {
-            Console.WriteLine("Bot is starting...");
-
-            await messageHandler.ListenForMessagesAsync(cts.Token);
-
-            Console.WriteLine("Bot is stopping...");
-        }
+        Console.WriteLine("Bot is starting...");
+        await _messageHandler.ListenForMessagesAsync(_cts.Token);
+        Console.WriteLine("Bot is stopping...");
     }
 }

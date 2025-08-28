@@ -1,36 +1,29 @@
-﻿using System.Net.Http;
+﻿using Microsoft.Extensions.Configuration;
 
-using Microsoft.Extensions.Configuration;
+namespace DayIncrease;
 
-namespace DayIncrease
+internal class WeatherApiClient(IConfiguration configuration)
 {
-    internal class WeatherApiClient
+    private readonly string _apiUrl = configuration["ApiSettings:SunriseSunsetApiUrl"]
+                                      ?? throw new ArgumentNullException(nameof(configuration),
+                                          "API URL not configured");
+
+    public async Task<string> GetWeatherDataAsync(double latitude, double longitude, DateTime date)
     {
-        private readonly string ApiUrl;
+        var formattedDate = date.ToString("yyyy-MM-dd");
+        var apiUrl = $"{_apiUrl}?lat={latitude}&lng={longitude}&date={formattedDate}&formatted=0";
 
-        public WeatherApiClient(IConfiguration configuration)
+        using HttpClient client = new();
+        try
         {
-            ApiUrl = configuration["ApiSettings:SunriseSunsetApiUrl"]
-                     ?? throw new ArgumentNullException(nameof(configuration), "API URL not configured");
+            var response = await client.GetAsync(apiUrl);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
         }
-
-        public async Task<string> GetWeatherDataAsync(double latitude, double longitude, DateTime date)
+        catch (Exception ex)
         {
-            string formattedDate = date.ToString("yyyy-MM-dd");
-            string apiUrl = $"{ApiUrl}?lat={latitude}&lng={longitude}&date={formattedDate}&formatted=0";
-
-            using HttpClient client = new();
-            try
-            {
-                HttpResponseMessage response = await client.GetAsync(apiUrl);
-                response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsStringAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching weather data: {ex.Message}");
-                throw;
-            }
+            Console.WriteLine($"Error fetching weather data: {ex.Message}");
+            throw;
         }
     }
 }
