@@ -1,117 +1,112 @@
 ﻿using Newtonsoft.Json;
-
 using System.Globalization;
 
-namespace DayIncrease
+namespace DayIncrease;
+
+internal static class WeatherDataParser
 {
-    internal static class WeatherDataParser
+    public static string ParseSunriseTime(string apiResponse)
     {
-        public static string ParseSunriseTime(string apiResponse)
+        try
         {
-            try
-            {
-                var jsonResult = JsonConvert.DeserializeObject<dynamic>(apiResponse);
-                var sunrise = jsonResult?.results.sunrise;
+            var jsonResult = JsonConvert.DeserializeObject<dynamic>(apiResponse);
+            var sunrise = jsonResult?.results.sunrise;
 
-                if (sunrise is not null && DateTimeOffset.TryParse((string)sunrise,
-                                            CultureInfo.InvariantCulture,
-                                            DateTimeStyles.None,
-                                            out DateTimeOffset sunriseDateTimeOffset))
-                {
-                    TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
-                    DateTime localSunriseTime = TimeZoneInfo.ConvertTime(sunriseDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, desiredTimeZone);
-                    return localSunriseTime.ToString("HH:mm:ss");
-                }
+            if (sunrise is null || !DateTimeOffset.TryParse((string)sunrise,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var sunriseDateTimeOffset)) return "Error parsing sunrise time";
+            var desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+            var localSunriseTime = TimeZoneInfo.ConvertTime(sunriseDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc,
+                desiredTimeZone);
+            return localSunriseTime.ToString("HH:mm:ss");
 
-                return "Error parsing sunrise time";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing sunrise time: {ex.Message}");
-                throw;
-            }
         }
-
-        public static string ParseSunsetTime(string apiResponse)
+        catch (Exception ex)
         {
-            try
-            {
-                var jsonResult = JsonConvert.DeserializeObject<dynamic>(apiResponse);
-                var sunset = jsonResult?.results.sunset;
-
-                if (sunset is not null && DateTimeOffset.TryParse((string)sunset,
-                                            CultureInfo.InvariantCulture,
-                                            DateTimeStyles.None,
-                                            out DateTimeOffset sunsetDateTimeOffset))
-                {
-                    TimeZoneInfo desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
-                    DateTime localSunsetTime = TimeZoneInfo.ConvertTime(sunsetDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, desiredTimeZone);
-                    return localSunsetTime.ToString("HH:mm:ss");
-                }
-
-                return "Error parsing sunset time";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing sunset time: {ex.Message}");
-                throw;
-            }
+            Console.WriteLine($"Error parsing sunrise time: {ex.Message}");
+            throw;
         }
+    }
 
-        public static string ParseDayLength(string apiResponseToday, string apiResponseYesterday, string apiResponseShortestDay)
+    public static string ParseSunsetTime(string apiResponse)
+    {
+        try
         {
-            try
+            var jsonResult = JsonConvert.DeserializeObject<dynamic>(apiResponse);
+            var sunset = jsonResult?.results.sunset;
+
+            if (sunset is not null && DateTimeOffset.TryParse((string)sunset,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var sunsetDateTimeOffset))
             {
-                var jsonResultToday = JsonConvert.DeserializeObject<dynamic>(apiResponseToday);
-                var jsonResultYesterday = JsonConvert.DeserializeObject<dynamic>(apiResponseYesterday);
-                var jsonResultShortestDay = JsonConvert.DeserializeObject<dynamic>(apiResponseShortestDay);
-
-                var dayLengthSecondsToday = (long?)jsonResultToday?.results.day_length;
-                var dayLengthSecondsYesterday = (long?)jsonResultYesterday?.results.day_length;
-                var dayLengthSecondsShortestDay = (long?)jsonResultShortestDay?.results.day_length;
-
-                if (dayLengthSecondsToday != null && dayLengthSecondsYesterday != null && dayLengthSecondsShortestDay != null)
-                {
-                    return CalculateDayLength(dayLengthSecondsToday.Value, dayLengthSecondsYesterday.Value, dayLengthSecondsShortestDay.Value);
-                }
-
-                return "Error: dayLengthSeconds is null";
+                var desiredTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+                var localSunsetTime =
+                    TimeZoneInfo.ConvertTime(sunsetDateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, desiredTimeZone);
+                return localSunsetTime.ToString("HH:mm:ss");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing day length: {ex.Message}");
-                throw;
-            }
+
+            return "Error parsing sunset time";
         }
-
-        private static string CalculateDayLength(long todayLength, long yesterdayLength, long shortestDayLength)
+        catch (Exception ex)
         {
-            TimeSpan dayLengthTodayTimeSpan = TimeSpan.FromSeconds(todayLength);
-            TimeSpan dayLengthDifferenceTimeSpan = TimeSpan.FromSeconds(todayLength - yesterdayLength);
-            TimeSpan shortestDayLengthDifferenceTimeSpan = TimeSpan.FromSeconds(todayLength - shortestDayLength);
-
-            string formattedDayLength = $"{dayLengthTodayTimeSpan:hh\\:mm\\:ss}" +
-                $"\nThe difference between yesterday and today: {dayLengthDifferenceTimeSpan:hh\\:mm\\:ss}" +
-                $"\nThe difference between today and the shortest day: {shortestDayLengthDifferenceTimeSpan:hh\\:mm\\:ss}";
-
-            return formattedDayLength;
+            Console.WriteLine($"Error parsing sunset time: {ex.Message}");
+            throw;
         }
+    }
 
-        internal static int CalculateDaysTillNearestSolstice(DateTime today)
+    public static string ParseDayLength(string apiResponseToday, string apiResponseYesterday,
+        string apiResponseShortestDay)
+    {
+        try
         {
-            TimeSpan date;
-            var solstice = SolsticeData.GetSolsticeByYear(today.Year);
+            var jsonResultToday = JsonConvert.DeserializeObject<dynamic>(apiResponseToday);
+            var jsonResultYesterday = JsonConvert.DeserializeObject<dynamic>(apiResponseYesterday);
+            var jsonResultShortestDay = JsonConvert.DeserializeObject<dynamic>(apiResponseShortestDay);
 
-            if (today.Month <= 7)
-            {
-                date = solstice.Value.Summer - today;
-            }
-            else
-            {
-                date = solstice.Value.Winter - today;
-            }
+            var dayLengthSecondsToday = (long?)jsonResultToday?.results.day_length;
+            var dayLengthSecondsYesterday = (long?)jsonResultYesterday?.results.day_length;
+            var dayLengthSecondsShortestDay = (long?)jsonResultShortestDay?.results.day_length;
 
-            return date.Days;
+            if (dayLengthSecondsToday != null && dayLengthSecondsYesterday != null &&
+                dayLengthSecondsShortestDay != null)
+                return CalculateDayLength(dayLengthSecondsToday.Value, dayLengthSecondsYesterday.Value,
+                    dayLengthSecondsShortestDay.Value);
+
+            return "Error: dayLengthSeconds is null";
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing day length: {ex.Message}");
+            throw;
+        }
+    }
+
+    private static string CalculateDayLength(long todayLength, long yesterdayLength, long shortestDayLength)
+    {
+        var dayLengthTodayTimeSpan = TimeSpan.FromSeconds(todayLength);
+        var dayLengthDifferenceTimeSpan = TimeSpan.FromSeconds(todayLength - yesterdayLength);
+        var shortestDayLengthDifferenceTimeSpan = TimeSpan.FromSeconds(todayLength - shortestDayLength);
+
+        var formattedDayLength = $@"{dayLengthTodayTimeSpan:hh\:mm\:ss}" +
+                                 $"\nThe difference between yesterday and today: {dayLengthDifferenceTimeSpan:hh\\:mm\\:ss}" +
+                                 $"\nThe difference between today and the shortest day: {shortestDayLengthDifferenceTimeSpan:hh\\:mm\\:ss}";
+
+        return formattedDayLength;
+    }
+
+    internal static int CalculateDaysTillNearestSolstice(DateTime today)
+    {
+        TimeSpan date = default;
+        var solstice = SolsticeData.GetSolsticeByYear(today.Year);
+
+        if (today.Month <= 7)
+        {
+            if (solstice != null) date = solstice.Value.Summer - today;
+        }
+        else if (solstice != null) date = solstice.Value.Winter - today;
+
+        return date.Days;
     }
 }
